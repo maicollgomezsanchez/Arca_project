@@ -1,9 +1,8 @@
 #:kivy 2.2.1
-
 #:import utils kivy.utils
 #:import Factory kivy.factory.Factory
 
-############ constants #########
+############ CONSTANTES #########
 #:set radius_default 25
 #:set color_fondo_pantalla '#cee5e5'
 #:set color_btn_press '#aeaeae'
@@ -19,8 +18,9 @@
 #:set label_txt_parada 'Tiempo de espera\n'
 #:set title_popup '¡ALERTA!\nBOTON EMERGENCIA PRESIONADO'
 
+# Estilo para los layouts
 <BoxLayout>:
-    spacing:20
+    spacing: 20
 
 <Label>:
     halign: 'center'
@@ -30,14 +30,14 @@
     font_size: 28
     color: utils.get_color_from_hex('#000000')
     disabled_color: utils.get_color_from_hex('#111111')
-    background_color: (0,0,0,0)
+    background_color: (0, 0, 0, 0)
     halign: 'center'
     valign: 'middle'
 
 <Popup_banner>:
     auto_dismiss: False
-    size_hint: 0.6 , 0.2
-    title:''
+    size_hint: 0.6, 0.2
+    title: ''
     separator_height: 0
     background_color: utils.get_color_from_hex(color_popup)
 
@@ -54,13 +54,13 @@
         
         Label:
             id: label_popup
-            color:utils.get_color_from_hex('#000000')
+            color: utils.get_color_from_hex('#000000')
             text: title_popup
             halign: 'center'
             valign: 'middle'
-        
-#################### VIEW MAIN ##############
-<viewMain>
+
+#################### VISTA PRINCIPAL ##############
+<viewMain>:
     canvas.before:
         Color:
             rgba: (utils.get_color_from_hex(color_fondo_pantalla))
@@ -83,10 +83,9 @@
                     on_press: root.mode_press(self.text, self.state)
                     canvas.before:
                         Color:
-                            rgba:  
-                                utils.get_color_from_hex(color_modos) if (self.state == 'down') else utils.get_color_from_hex(color_btn_press)
+                            rgba: utils.get_color_from_hex(color_modos) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
                         RoundedRectangle:
-                            size :self.size
+                            size: self.size
                             pos: self.pos
                             radius: [radius_default]
             BoxLayout:
@@ -97,10 +96,9 @@
                     on_press: root.mode_press(self.text, self.state)
                     canvas.before:
                         Color:
-                            rgba:  
-                                utils.get_color_from_hex(color_modos) if (self.state == 'down') else utils.get_color_from_hex(color_btn_press)
+                            rgba: utils.get_color_from_hex(color_modos) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
                         RoundedRectangle:
-                            size :self.size
+                            size: self.size
                             pos: self.pos
                             radius: [radius_default]
             BoxLayout:
@@ -111,10 +109,9 @@
                     on_press: root.mode_press(self.text, self.state)
                     canvas.before:
                         Color:
-                            rgba:  
-                                utils.get_color_from_hex(color_modos) if (self.state == 'down') else utils.get_color_from_hex(color_btn_press)
+                            rgba: utils.get_color_from_hex(color_modos) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
                         RoundedRectangle:
-                            size :self.size
+                            size: self.size
                             pos: self.pos
                             radius: [radius_default]
 
@@ -122,113 +119,113 @@
         BoxLayout:
             orientation: 'horizontal'
             size_hint_y: 0.6
-            #columna tiempo viaje
+            # Columna tiempo viaje
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_y: 1
-                # boton de cambio + tiempo de viaje
+                # Boton de cambio + tiempo de viaje
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
                     height: self.parent.height * 0.2
-                    padding: [self.width*0.5 - self.height*0.5, 0, self.width*0.5 - self.height*0.5, 0]
+                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
                     Button:
-                        text:"+"
+                        text: "+"
                         width: self.height
                         height: self.parent.height
                         on_press: root.on_button_press('travel_+')
-                        on_release:root.on_button_release()
+                        on_release: root.on_button_release()
                         canvas.before:
                             Color:
                                 rgba: utils.get_color_from_hex(color_btn_normal)
                             RoundedRectangle:
-                                size :self.size
+                                size: self.size
                                 pos: self.pos
                                 radius: [radius_default]
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                 Label:
-                    color:(0,0,0,1)
+                    color: (0, 0, 0, 1)
                     text: label_txt_viaje + str(root.label_time_travel)
                     height: self.parent.height * 0.6
-                #boton de cambio - tiempo de viaje
+                # Boton de cambio - tiempo de viaje
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
                     height: self.parent.height * 0.2
-                    padding: [self.width*0.5 - self.height*0.5, 0, self.width*0.5 - self.height*0.5, 0]
+                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
                     Button:
-                        text: '-'
+                        text: "-"
                         width: self.height
                         height: self.parent.height
                         on_press: root.on_button_press('travel_-')
-                        on_release:root.on_button_release()
+                        on_release: root.on_button_release()
                         canvas.before:
                             Color:
                                 rgba: utils.get_color_from_hex(color_btn_normal)
                             RoundedRectangle:
-                                size :self.size
+                                size: self.size
                                 pos: self.pos
                                 radius: [radius_default]
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
             
-            #columna tiempo parada
+            # Columna tiempo parada
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_y: 1
-                # boton cambio + tiempo de espera
+                # Boton cambio + tiempo de espera
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
                     height: self.parent.height * 0.2
-                    padding: [self.width*0.5 - self.height*0.5, 0, self.width*0.5 - self.height*0.5, 0]
+                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
                     Button:
-                        text: '+'
+                        text: "+"
                         width: self.height
                         height: self.parent.height
                         on_press: root.on_button_press('auto_+')
-                        on_release:root.on_button_release() 
+                        on_release: root.on_button_release() 
                         canvas.before:
                             Color:
                                 rgba: utils.get_color_from_hex(color_btn_normal)
                             RoundedRectangle:
-                                size :self.size
+                                size: self.size
                                 pos: self.pos
                                 radius: [radius_default]
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
                 Label:
-                    color:(0,0,0,1)
+                    color: (0, 0, 0, 1)
                     text: label_txt_parada + str(root.label_time_wait)
                     height: self.parent.height * 0.6
-                # boton cambio - tiempo de espera
+                # Boton cambio - tiempo de espera
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
                     height: self.parent.height * 0.2
-                    padding: [self.width*0.5 - self.height*0.5, 0, self.width*0.5 - self.height*0.5, 0]
+                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
                     Button:
-                        text: '-'
+                        text: "-"
                         width: self.height
                         height: self.parent.height
                         on_press: root.on_button_press('auto_-')
-                        on_release:root.on_button_release()
+                        on_release: root.on_button_release()
                         canvas.before:
                             Color:
                                 rgba: utils.get_color_from_hex(color_btn_normal)
                             RoundedRectangle:
-                                size :self.size
+                                size: self.size
                                 pos: self.pos
                                 radius: [radius_default]
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
 
-            #columna botones especiales
+            # Columna botones especiales
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_y: 1
-                #boton activar comer ficha
+                # Boton activar comer ficha
                 ToggleButton:
                     id: decoin_button
                     text: "ACTIVAR\nDESCARGA" 
@@ -236,13 +233,12 @@
                     on_press: root.decoin_press()
                     canvas.before:
                         Color:
-                            rgba:  
-                                utils.get_color_from_hex(color_btn_press)  if (self.state == 'normal') else utils.get_color_from_hex(color_btn_special)
+                            rgba: utils.get_color_from_hex(color_btn_press) if self.state == 'normal' else utils.get_color_from_hex(color_btn_special)
                         RoundedRectangle:
-                            size :self.size
+                            size: self.size
                             pos: self.pos
                             radius: [radius_default]
-                #boton comer ficha
+                # Boton comer ficha
                 Button:
                     id: coin_button
                     text: 'COMER\nFICHAS'
@@ -250,14 +246,14 @@
                     on_press: root.special_buttons('coin')
                     canvas.before:
                         Color:
-                            rgba:  utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_btn_special)
+                            rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_btn_special)
                         RoundedRectangle:
-                            size :self.size
+                            size: self.size
                             pos: self.pos
                             radius: [30]
                     on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                     on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_special)
-                #boton bocina
+                # Boton bocina
                 Button:
                     text: "BOCINA"
                     height: self.parent.height * 0.2
@@ -266,11 +262,12 @@
                         Color:
                             rgba: utils.get_color_from_hex(color_bocina)
                         RoundedRectangle:
-                            size :self.size
+                            size: self.size
                             pos: self.pos
                             radius: [30]
                     on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                     on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_bocina)   
+        
         # Tercera fila
         BoxLayout:
             orientation: 'horizontal'
@@ -282,14 +279,13 @@
                 on_press: root.state_press(self.text, self.state)
                 canvas.before:
                     Color:
-                        rgba:  
-                            utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_start)
+                        rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_start)
                     RoundedRectangle:
-                        size :self.size
+                        size: self.size
                         pos: self.pos
                         radius: [30]
                     
-            #boton pause
+            # Boton pause
             ToggleButton:
                 id: pause_button
                 text: "PAUSE"
@@ -297,14 +293,13 @@
                 on_press: root.state_press(self.text, self.state)
                 canvas.before:
                     Color:
-                        rgba:  
-                            utils.get_color_from_hex(color_btn_press)  if self.disabled else utils.get_color_from_hex(color_pause)
+                        rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_pause)
                     RoundedRectangle:
-                        size :self.size
+                        size: self.size
                         pos: self.pos
                         radius: [30]
                 
-            #boton stop
+            # Boton stop
             Button:
                 id: stop_button
                 text: "STOP"
@@ -313,7 +308,7 @@
                     Color:
                         rgba: utils.get_color_from_hex(color_stop)
                     RoundedRectangle:
-                        size :self.size
+                        size: self.size
                         pos: self.pos
                         radius: [30]
                 on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)

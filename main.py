@@ -5,9 +5,16 @@ from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
 from functools import partial
-import time
 
 TIEMPO_SIRENA = 3  # Tiempo de duración de la sirena en segundos
+
+
+class GPIO_raspi:
+    def __init__(self):
+        pass
+
+    def enable_pin():
+        pass
 
 
 class Popup_banner(Popup):  # Clase para la ventana emergente (popup)
@@ -19,23 +26,15 @@ class Popup_banner(Popup):  # Clase para la ventana emergente (popup)
 
 
 class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica del juego
-    modes = ("MANUAL", "SEMI", "AUTO")  # Modos de operación
-    states = ("STOP", "PAUSE", "START")  # Estados del sistema
     # Variables de estado y botones
     main_mode = None
     current_state = None
-
-    time_buzzer = 3
     label_time_travel = ObjectProperty("00:05")  # Tiempo de viaje (viaje)
     label_time_wait = ObjectProperty("00:05")  # Tiempo automático
-    backup_label_travel = ObjectProperty(None)  # Copia del tiempo de viaje
-    backup_label_auto = ObjectProperty(None)  # Copia del tiempo automático
-
     clock_event = None  # Evento de reloj para actualizar el tiempo
     counter_travel = 0  # Contador de tiempo de viaje
     counter_wait = 0  # Contador de tiempo de espera
     popup = None  # Variable para manejar el popup
-
     current_game = None
 
     def __init__(self, **kwargs):
@@ -90,6 +89,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             "buzzer": ("bocina!", self.power_buzzer),
             "coin": ("comiendo ficha!", self.eating_coin),
         }
+
         if button_id in actions:
             text, action = actions[button_id]
             self.enable_popup(text, 0.3)
@@ -129,10 +129,11 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if self.current_state in ("STOP", None):
             if self.decoin_button.state == "normal":
                 self.coin_button.disabled = True
-                self.enable_popup("bloqueo de descarga !", 0.2)
+                self.enable_popup("bloqueo de descarga !", 0.5)
+
             else:
                 self.coin_button.disabled = False
-                self.enable_popup("activando descarga !", 0.2)
+                self.enable_popup("activando descarga !", 0.5)
 
     # Cambia el modo de operación
     def mode_press(self, mode_select, mode_state):
@@ -150,9 +151,6 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if self.current_state is None:
             return
 
-        self.pause_button.disabled = False
-        self.start_button.disabled = False
-
         if state_select == "STOP":
             self.clean_all()
             return
@@ -163,6 +161,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.auto_button.disabled = True
             self.coin_button.disabled = True
             self.start_button.disabled = True
+            self.pause_button.disabled = False
             self.start_button.state = "normal"
 
             if self.current_state == "STOP":
@@ -182,6 +181,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         if state_select == "PAUSE":
             print(f"pausado en modo: {self.main_mode}")
+            self.start_button.disabled = False
             self.pause_button.disabled = True
             self.pause_button.state = "normal"
             self.current_state = "PAUSE"
@@ -228,6 +228,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 print("finaliza espera modo AUTO")
                 self.clock_event.cancel()
                 self.clock_event = Clock.schedule_interval(self.update_travel_time, 1)
+
             else:
                 self.label_time_wait = (
                     f"{self.backup_label_auto}/{self.time_to_lbl(self.counter_wait)}"
@@ -264,7 +265,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
                     self.clock_event.cancel()
                     self.current_state = "STOP"
-                    self.enable_popup("se acabó !", 1)
+                    self.enable_popup("se acabó !", 0.5)
                     self.power_buzzer()
                     print("finaliza en auto")
                     self.init_counter()
@@ -272,7 +273,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Limpia todos los estados y reinicia los temporizadores
     def clean_all(self):
         if self.main_mode is not None and self.current_game is True:
-            self.enable_popup("se acabó !!!", 0.7)
+            self.enable_popup("se acabó !!!", 0.5)
             self.power_buzzer()
             self.current_game = False
 
@@ -318,6 +319,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def open_popup(self, text: str):
         if not self.popup:
             self.popup = Popup_banner()
+
         self.popup.setup_text(text)
         self.popup.open()
 
