@@ -421,9 +421,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 class ArcaProjectApp(App):
     def build(self):
         # Configura la ventana sin bordes
-        Window.borderless = True
+        Window.borderless = False
         # Descomentar para pantalla completa
-        Window.fullscreen = True
+        Window.fullscreen = False
         return viewMain()
 
 
