@@ -1,0 +1,234 @@
+#:kivy 2.2.1
+#:import utils kivy.utils
+#:import Factory kivy.factory.Factory
+
+############ CONSTANTES #########
+#:set radius_default 25
+#:set color_fondo_pantalla '#cee5e5'
+#:set color_btn_press '#aeaeae'
+#:set color_btn_normal '#90a4a4'
+#:set color_stop '#ff2222'
+#:set color_start '#1fc408'
+#:set color_pause '#ff8022'
+#:set color_modos '#fffa59'
+#:set color_btn_special '#5886ac'
+#:set color_bocina '#5886ac'
+#:set color_popup '#887700'
+#:set label_txt_viaje 'VUELTAS\n'
+#:set label_txt_parada 'ESPERA\n'
+#:set title_popup '¡ALERTA!\nBOTON EMERGENCIA PRESIONADO'
+#:set label_start 'MARCHA'
+#:set label_pause 'PAUSA'
+#:set label_stop 'PARO'
+
+# Estilo para los layouts
+<BoxLayout>:
+    spacing: 20
+
+<Label>:
+    halign: 'center'
+    font_size: 28
+    valign: 'middle'
+
+<Button>:
+    font_size: 28
+    color: utils.get_color_from_hex('#000000')
+    disabled_color: utils.get_color_from_hex('#111111')
+    background_color: (0, 0, 0, 0)
+    halign: 'center'
+    valign: 'middle'
+
+<Popup_banner>:
+    auto_dismiss: False
+    size_hint: 0.6, 0.2
+    title: ''
+    separator_height: 0
+    background_color: utils.get_color_from_hex(color_popup)
+
+    BoxLayout:
+        orientation: "vertical"
+        size: root.width, root.height
+
+        canvas.before:
+            Color:
+                rgba: utils.get_color_from_hex(color_popup)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        Label:
+            id: label_popup
+            color: utils.get_color_from_hex('#000000')
+            text: title_popup
+            halign: 'center'
+            valign: 'middle'
+
+#################### VISTA PRINCIPAL ##############
+<viewMain>:
+    canvas.before:
+        Color:
+            rgba: (utils.get_color_from_hex(color_fondo_pantalla))
+        Rectangle:
+            size: root.width, root.height
+    
+    BoxLayout:
+        orientation: 'vertical'
+        size: root.width, root.height
+
+        # Primera fila
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.2
+            BoxLayout:
+                ToggleButton:
+                    id: manual_button
+                    text: 'MANUAL'
+                    group: 'mode'
+                    on_press: root.mode_press(self.text, self.state)
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(color_modos) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
+            BoxLayout:
+
+            BoxLayout:
+                ToggleButton:
+                    id: auto_button
+                    text: 'AUTO'
+                    group: 'mode'
+                    on_press: root.mode_press(self.text, self.state)
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(color_modos) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
+
+        # Segunda fila
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.6
+            BoxLayout:
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: 1
+                # Boton de cambio + tiempo de viaje
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: self.parent.height * 0.2
+                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
+                    Button:
+                        text: "+"
+                        width: self.height
+                        height: self.parent.height
+                        on_press: root.on_button_press('button_+')
+                        on_release: root.on_button_release()
+                        canvas.before:
+                            Color:
+                                rgba: utils.get_color_from_hex(color_btn_normal)
+                            RoundedRectangle:
+                                size: self.size
+                                pos: self.pos
+                                radius: [radius_default]
+                        on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
+                        on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
+                Label:
+                    font_size: 28
+                    color: (0, 0, 0, 1)
+                    text: label_txt_viaje + str(root.laps)
+                    height: self.parent.height * 0.6
+                # Boton de cambio - tiempo de viaje
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: self.parent.height * 0.2
+                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
+                    Button:
+                        text: "-"
+                        width: self.height
+                        height: self.parent.height
+                        on_press: root.on_button_press('button_-')
+                        on_release: root.on_button_release()
+                        canvas.before:
+                            Color:
+                                rgba: utils.get_color_from_hex(color_btn_normal)
+                            RoundedRectangle:
+                                size: self.size
+                                pos: self.pos
+                                radius: [radius_default]
+                        on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
+                        on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
+            
+            
+            # Columna botones especiales
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: 1
+                BoxLayout:
+                # Boton bocina
+                Button:
+                    text: "BOCINA"
+                    height: self.parent.height * 0.2
+                    on_press: root.special_buttons('buzzer')
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(color_bocina)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [30]
+                    on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
+                    on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_bocina) 
+                BoxLayout:
+                  
+        
+        # Tercera fila
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.2
+            ToggleButton:
+                id: start_button
+                text: label_start
+                group: 'state'
+                on_press: root.state_press('START', self.state)
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_start)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [30]
+                    
+            # Boton pause
+            ToggleButton:
+                id: pause_button
+                text: label_pause
+                group: 'state'
+                on_press: root.state_press('PAUSE', self.state)
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_pause)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [30]
+                
+            # Boton stop
+            Button:
+                id: stop_button
+                text: label_stop
+                on_press: root.state_press('STOP', self.state)
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex(color_stop)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [30]
+                on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
+                on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_stop)

@@ -39,3 +39,38 @@ Puedes instalar Kivy usando pip:
 
 ```bash
 pip install kivy
+```
+
+actualizar sistema abrir consola ssh:
+
+```bash
+sudo raspi-config:
+   interface_options: VNC/enable
+sudo apt-get update
+sudo apt-get upgrade
+```
+
+ocultar arranque:
+```bash
+
+    sudo nano /boot/firmware/cmdline.txt:
+        loglevel=1 quiet splash vt.global_cursor_default=0
+
+    sudo apt install plymouth plymouth-themes
+    sudo plymouth-set-default-theme details
+    sudo update-initramfs -u
+
+    sudo nano /etc/lightdm/lightdm-autologin.conf:
+        autologin-user = pi
+        autologin-user-timeout = 0
+        
+    sudo reboot R4spb3rr7
+```
+crear entorno virtual:
+```bash
+   sudo apt install python3-pip python3-setuptools python3-wheel
+   sudo apt install python3-pip python3-setuptools python3-wheel
+   python3 -m venv kivy_venv
+   source kivy_venv/bin/activate
+   pip install kivy
+```

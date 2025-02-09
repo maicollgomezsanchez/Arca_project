@@ -1,0 +1,20 @@
+scalestri: 
+    contador de vueltas por entrada
+    programar el numero de vueltas max 50 
+    no tiene comer fichas  ni desactivar descarga de fichas
+    mostrar el numero de vueltas
+    disminuyendo y mostrar la disminucion, implica cambios en la HMI
+
+interface:
+    cambiar la presentacion de los numeros y que disminuyan y aumentar el tamaño
+    para toda maquina, tiempo de espera max 10 minutos y solo AUTO permite el cambio del tiempo
+
+    en maquinsa que comen fichas cuando se presione stop se debe comer fichas y sonas bocina
+    duracion del pitido de la bocina 2 seg
+    duracion del comer la ficha minimo 3 pulsos, 500mseg
+
+    eliminar todas la notificaciones y dejar solo !SETA DE EMERGENCIA ACTIVADA! 
+
+
+babylandia y carrusel:
+    manejan tiempos tiempo de viaje
