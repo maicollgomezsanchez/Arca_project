@@ -119,8 +119,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             }
 
             if button_id in actions:
-                text, action = actions[button_id]
-                self.enable_popup(text, 0.3)
+                action = actions[button_id]
+                #self.enable_popup(text, 0.3)
                 action()
 
         except Exception as e:
@@ -173,12 +173,12 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             if self.current_state in ("STOP", None):
                 if self.decoin_button.state == "normal":
                     self.coin_button.disabled = True
-                    self.enable_popup("bloqueo de descarga !", 0.5)
+                    #self.enable_popup("bloqueo de descarga !", 0.5)
                     print("bloqueando boton de comer fichas")
 
                 else:
                     self.coin_button.disabled = False
-                    self.enable_popup("activando descarga !", 0.5)
+                    #self.enable_popup("activando descarga !", 0.5)
                     print("boton de comer fichas activado")
 
         except Exception as e:
@@ -314,7 +314,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 if self.active_sound == True:
                     self.active_sound = False
                     print(f"comienza el juego en {self.main_mode}")
-                    self.enable_popup("comienza el juego !!!", TIEMPO_SIRENA)
+                    #self.enable_popup("comienza el juego !!!", TIEMPO_SIRENA)
                     self.power_buzzer()
 
                 if self.counter_travel > 0:
@@ -340,7 +340,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
                         self.clock_event.cancel()
                         self.current_state = "STOP"
-                        self.enable_popup("se acabó !", 0.5)
+                        #self.enable_popup("se acabó !", 0.5)
                         self.power_buzzer()
                         print("finaliza en auto")
                         self.init_counter()
@@ -352,7 +352,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def clean_all(self):
         try:
             if self.main_mode is not None and self.current_game is True:
-                self.enable_popup("se acabó !!!", 0.5)
+                #self.enable_popup("se acabó !!!", 0.5)
                 self.eating_coin() # comer fichas
                 self.power_buzzer()
                 self.current_game = False
