@@ -13,8 +13,9 @@ PIN_EMERGENCY = 18
 PIN_SENSOR = 23
 PIN_MARCHA = 24
 PIN_BOCINA = 7
-TIEMPO_SIRENA = 3
+TIEMPO_SIRENA = 2
 TIEMPO_1_SEC = 1
+MAX_LAPS = 50
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -105,7 +106,7 @@ class viewMain(Widget):
         self.pause_button.disabled = True
 
     def power_buzzer(self):
-        log.info("¡BUZZZZZ !!!!!")  # Usar logging
+        log.info("¡BUZZZZZ !!!!!")
         self.output_bocina.turn_on()
         time.sleep(TIEMPO_SIRENA)
         self.output_bocina.turn_off()
@@ -125,7 +126,7 @@ class viewMain(Widget):
         }
         if id_button in timers:
             increment = timers[id_button]
-            self.laps = max(0, min(50, self.laps + increment))
+            self.laps = max(0, min(MAX_LAPS, self.laps + increment))
 
     def on_button_press(self, button):
         self.continuous_event = None

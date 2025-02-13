@@ -6,7 +6,6 @@ scalestri:
     disminuyendo y mostrar la disminucion, implica cambios en la HMI
 
 interface:
-    cambiar la presentacion de los numeros y que disminuyan y aumentar el tamaño
     para toda maquina, tiempo de espera max 10 minutos y solo AUTO permite el cambio del tiempo
 
     en maquinsa que comen fichas cuando se presione stop se debe comer fichas y sonas bocina
