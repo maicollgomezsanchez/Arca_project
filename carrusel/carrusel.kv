@@ -127,6 +127,10 @@
                 orientation: 'vertical'
                 size_hint_y: 1
                 # Boton de cambio + tiempo de viaje
+                Label:
+                    color: (0, 0, 0, 1)
+                    text: label_txt_viaje + str(root.label_time_travel)
+                    height: self.parent.height * 0.6
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
@@ -147,10 +151,7 @@
                                 radius: [radius_default]
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
-                Label:
-                    color: (0, 0, 0, 1)
-                    text: label_txt_viaje + str(root.label_time_travel)
-                    height: self.parent.height * 0.6
+                
                 # Boton de cambio - tiempo de viaje
                 BoxLayout:
                     orientation: 'horizontal'
@@ -178,6 +179,10 @@
                 orientation: 'vertical'
                 size_hint_y: 1
                 # Boton cambio + tiempo de espera
+                Label:
+                    color: (0, 0, 0, 1)
+                    text: label_txt_parada + str(root.label_time_wait)
+                    height: self.parent.height * 0.6
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
@@ -198,10 +203,7 @@
                                 radius: [radius_default]
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
-                Label:
-                    color: (0, 0, 0, 1)
-                    text: label_txt_parada + str(root.label_time_wait)
-                    height: self.parent.height * 0.6
+                
                 # Boton cambio - tiempo de espera
                 BoxLayout:
                     orientation: 'horizontal'
