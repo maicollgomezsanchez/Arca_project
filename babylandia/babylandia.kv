@@ -27,7 +27,7 @@
 
 <Label>:
     halign: 'center'
-    font_size: 32
+    font_size: 42
 
 <Button>:
     font_size: 28
@@ -148,7 +148,6 @@
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                 Label:
-                    font_size: 58
                     color: (0, 0, 0, 1)
                     text: label_txt_viaje + str(root.label_time_travel)
                     height: self.parent.height * 0.6
@@ -200,7 +199,6 @@
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
                 Label:
-                    font_size: 58
                     color: (0, 0, 0, 1)
                     text: label_txt_parada + str(root.label_time_wait)
                     height: self.parent.height * 0.6
