@@ -172,9 +172,10 @@
                 BoxLayout:
                 # Boton bocina
                 Button:
+                    id: boton_bocina
                     text: "BOCINA"
                     height: self.parent.height * 0.2
-                    on_press: root.special_buttons('buzzer')
+                    on_press: root.active_buzzer()
                     canvas.before:
                         Color:
                             rgba: utils.get_color_from_hex(color_bocina)

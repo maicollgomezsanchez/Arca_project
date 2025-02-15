@@ -46,7 +46,7 @@ class Pin:
         """
         if self.mode == "GPIO.IN":
             #GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            pass
+            return
         if self.mode == "GPIO.OUT":
             #GPIO.setup(self.channel, GPIO.OUT)
             self.turn_off()
@@ -58,9 +58,9 @@ class Pin:
     def init_cb(self, cb_up, cb_down=None):
         if self.mode == "GPIO.IN":
             log.warning(f"init callback up {self.channel}")
-            # GPIO.add_event_detect(self.channel, callback=cb_up, bouncetime=200)  # Flanco de subida (LOW a HIGH)
+            # GPIO.add_event_detect(self.channel, GPIO.RISING, callback=cb_up, bouncetime=200)  # Flanco de subida (LOW a HIGH)
         if cb_down is not None:
-            # GPIO.add_event_detect(self.channel, callback=cb_down, bouncetime=200)  # Flanco de bajada (HIGH a LOW)
+            # GPIO.add_event_detect(self.channel, GPIO.FALLING, callback=cb_down, bouncetime=200)  # Flanco de bajada (HIGH a LOW)
             log.warning(f"init callback down {self.channel}")
         else:
             self.cb_on = True
@@ -114,26 +114,26 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
     # Activa la bocina
     def power_buzzer(self):
-        if self.pin_thread and self.pin_thread.is_alive():
+        if self.thread_buzzer and self.thread_buzzer.is_alive():
             return
 
         log.info("¡BUZZZZZ !!!!!")
-        self.pin_thread = threading.Thread(
+        self.thread_buzzer = threading.Thread(
             target=self.output_bocina.toggle_pin, args=(TIEMPO_SIRENA,), daemon=True
         )
-        self.pin_thread.start()
+        self.thread_buzzer.start()
 
     # Simula el consumo de una moneda
     def eating_coin(self):
-        if self.pin_thread and self.pin_thread.is_alive():
+        if self.thread_coin and self.thread_coin.is_alive():
             return
         log.info("eating_coin")
-        self.pin_thread = threading.Thread(
+        self.thread_coin = threading.Thread(
             target=self.output_moneda.toggle_pin,
             args=(TIEMPO_1_SEC / 3, 3),
             daemon=True,
         )
-        self.pin_thread.start()
+        self.thread_coin.start()
         # Configura los tiempos de respaldo
 
     def setup_time(self):
@@ -216,7 +216,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         )
         # outputs
         self.output_bocina = Pin(PIN_BOCINA)
-        self.pin_thread = None
+        self.thread_buzzer = None
+        self.thread_coin = None
         self.output_marcha = Pin(PIN_MARCHA)
         self.output_moneda = Pin(PIN_TRAGA_MONEDA)
 
