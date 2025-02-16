@@ -16,18 +16,20 @@
 #:set color_popup '#887700'
 #:set label_txt_viaje 'VUELTAS\n'
 #:set label_txt_parada 'ESPERA\n'
-#:set title_popup '¡ALERTA!\nBOTON EMERGENCIA PRESIONADO'
+#:set title_popup ''
 #:set label_start 'MARCHA'
 #:set label_pause 'PAUSA'
 #:set label_stop 'PARO'
+#:set START "START"
+#:set STOP "STOP"
+#:set PAUSE "PAUSE"
 
 # Estilo para los layouts
 <BoxLayout>:
     spacing: 20
-
 <Label>:
     halign: 'center'
-    font_size: 28
+    font_size: 40
     valign: 'middle'
 
 <Button>:
@@ -44,41 +46,41 @@
     title: ''
     separator_height: 0
     background_color: utils.get_color_from_hex(color_popup)
-
+    #vista pop up
     BoxLayout:
         orientation: "vertical"
         size: root.width, root.height
-
+        #color fondo
         canvas.before:
             Color:
                 rgba: utils.get_color_from_hex(color_popup)
             Rectangle:
                 pos: self.pos
                 size: self.size
-        
+        #cuerpo
         Label:
             id: label_popup
             color: utils.get_color_from_hex('#000000')
             text: title_popup
             halign: 'center'
             valign: 'middle'
-
 #################### VISTA PRINCIPAL ##############
 <viewMain>:
+    # color de fondo
     canvas.before:
         Color:
             rgba: (utils.get_color_from_hex(color_fondo_pantalla))
         Rectangle:
             size: root.width, root.height
-    
+    # vista principal
     BoxLayout:
         orientation: 'vertical'
         size: root.width, root.height
-
         # Primera fila
         BoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.2
+            size_hint_y: 0.3
+            # Boton Manual
             BoxLayout:
                 ToggleButton:
                     id: manual_button
@@ -93,7 +95,7 @@
                             pos: self.pos
                             radius: [radius_default]
             BoxLayout:
-
+            # Boton Auto
             BoxLayout:
                 ToggleButton:
                     id: auto_button
@@ -111,11 +113,17 @@
         # Segunda fila
         BoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.6
+            size_hint_y: 0.4
             BoxLayout:
+            # Columna vistas
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_y: 1
+                #label de vueltas
+                Label:
+                    color: (0, 0, 0, 1)
+                    text: label_txt_viaje + str(root.laps)
+                    height: self.parent.height * 0.6
                 # Boton de cambio + tiempo de viaje
                 BoxLayout:
                     orientation: 'horizontal'
@@ -137,11 +145,6 @@
                                 radius: [radius_default]
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
-                Label:
-                    font_size: 28
-                    color: (0, 0, 0, 1)
-                    text: label_txt_viaje + str(root.laps)
-                    height: self.parent.height * 0.6
                 # Boton de cambio - tiempo de viaje
                 BoxLayout:
                     orientation: 'horizontal'
@@ -163,8 +166,6 @@
                                 radius: [radius_default]
                         on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                         on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_normal)
-            
-            
             # Columna botones especiales
             BoxLayout:
                 orientation: 'vertical'
@@ -172,10 +173,10 @@
                 BoxLayout:
                 # Boton bocina
                 Button:
-                    id: boton_bocina
                     text: "BOCINA"
                     height: self.parent.height * 0.2
-                    on_press: root.active_buzzer()
+                    on_press: root.output_bocina.on()
+                    on_release: root.output_bocina.off()
                     canvas.before:
                         Color:
                             rgba: utils.get_color_from_hex(color_bocina)
@@ -186,17 +187,16 @@
                     on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                     on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_bocina) 
                 BoxLayout:
-                  
-        
         # Tercera fila
         BoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.2
+            size_hint_y: 0.3
+            # Boton Start
             ToggleButton:
                 id: start_button
                 text: label_start
                 group: 'state'
-                on_press: root.state_press('START', self.state)
+                on_press: root.state_press(START)
                 canvas.before:
                     Color:
                         rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_start)
@@ -204,13 +204,12 @@
                         size: self.size
                         pos: self.pos
                         radius: [30]
-                    
             # Boton pause
             ToggleButton:
                 id: pause_button
                 text: label_pause
                 group: 'state'
-                on_press: root.state_press('PAUSE', self.state)
+                on_press: root.state_press(PAUSE)
                 canvas.before:
                     Color:
                         rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_pause)
@@ -218,12 +217,11 @@
                         size: self.size
                         pos: self.pos
                         radius: [30]
-                
             # Boton stop
             Button:
                 id: stop_button
                 text: label_stop
-                on_press: root.state_press('STOP', self.state)
+                on_press: root.state_press(STOP)
                 canvas.before:
                     Color:
                         rgba: utils.get_color_from_hex(color_stop)
