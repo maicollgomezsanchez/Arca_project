@@ -35,13 +35,7 @@ Para ejecutar este proyecto, necesitas tener instaladas las siguientes dependenc
 - **Python** 3.x
 - **Kivy** 2.x
 
-Puedes instalar Kivy usando pip:
-
-```bash
-pip install kivy
-```
-
-actualizar sistema abrir consola ssh:
+## actualizar sistema abrir consola ssh:
 
 ```bash
 sudo raspi-config:
@@ -49,28 +43,106 @@ sudo raspi-config:
 sudo apt-get update
 sudo apt-get upgrade
 ```
+## crear entorno virtual:
 
-ocultar arranque:
 ```bash
+    sudo apt install python3-gpiozero
+    python3 -m venv env
+    #entrar a entorno
+    source env/bin/activate
+    pip3 install kivy
+    pip3 install gpiozero
+    pip3 install lgpio
+    sudo apt install pigpio
+    pip install RPi.GPIO pigpio
+    pip3 install --upgrade pyinstaller
+    pyinstaller --version
+    mkdir env/src/game
 
+   sudo systemctl start pigpiod
+   sudo systemctl enable pigpiod
+   sudo systemctl status pigpiod
+
+
+```
+
+## ocultar arranque:
+```bash
+    pass: R4spb3rr7
     sudo nano /boot/firmware/cmdline.txt:
         loglevel=1 quiet splash vt.global_cursor_default=0
 
-    sudo apt install plymouth plymouth-themes
-    sudo plymouth-set-default-theme details
-    sudo update-initramfs -u
+   sudo apt install plymouth plymouth-themes
+   sudo plymouth-set-default-theme details
+   sudo update-initramfs -u
 
-    sudo nano /etc/lightdm/lightdm-autologin.conf:
+   sudo nano /etc/lightdm/lightdm-autologin.conf:
         autologin-user = pi
         autologin-user-timeout = 0
-        
-    sudo reboot R4spb3rr7
+   
+    sudo reboot 
 ```
-crear entorno virtual:
+
+
+## crear aplicacion
+
 ```bash
-   sudo apt install python3-pip python3-setuptools python3-wheel
-   sudo apt install python3-pip python3-setuptools python3-wheel
-   python3 -m venv kivy_venv
-   source kivy_venv/bin/activate
-   pip install kivy
+   sudo apt install python3-pip python3-dev -y
+   sudo apt install python3-rpi.gpio python3-pigpio python3-gpiozero -y
+
+   pyinstaller --onefile  --windowed --add-data="vista.kv:." main.py
+
+   pyinstaller --onefile  hmi.py
+
+```
+luego mover el ejecutable a:
+
+```bash
+cd /home/pi/env/src/game/dist/
+```
+
+## crear autoejecutable:
+
+```bash
+sudo nano /etc/systemd/system/game.service
+
+[Unit]
+Description=Game_App
+After=multi-user.target
+Wants=graphical.target
+
+[Service]
+ExecStart=/home/pi/env/src/game/dist/main
+WorkingDirectory=/home/pi/env/src/game
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Restart=always
+User=pi
+Group=pi
+
+ExecStartPre=/bin/sh -c 'chmod a+rw /dev/gpiomem'
+ExecStartPre=/bin/sh -c 'chmod a+rw /sys/class/gpio/*'
+ExecStartPre=/bin/sh -c 'chmod a+rw /dev/mem'
+
+ExecStartPre=/usr/bin/systemctl start pigpiod
+ExecStartPre=/bin/sleep 5
+
+[Install]
+WantedBy=graphical.target
+```
+## comandos de servicio de auto ejecucion y encendido automatico
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable game.service
+sudo systemctl start game.service
+
+cat /etc/systemd/system/game.service
+DISPLAY=:0 /home/pi/env/src/game/dist/main
+journalctl -u game.service --no-pager --lines=50
+
+sudo systemctl status game.service
+sudo systemctl restart game.service
+
+sudo systemctl disable game.service
 ```
