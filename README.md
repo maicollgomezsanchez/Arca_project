@@ -53,12 +53,11 @@ sudo apt-get upgrade
     pip3 install kivy
     pip3 install gpiozero
     pip3 install lgpio
-    apt install pigpio
+    sudo apt install pigpio
     pip install RPi.GPIO pigpio
     pip3 install --upgrade pyinstaller
     pyinstaller --version
-    mkdir game
-    mkdir src
+    mkdir env/src/game
 
    sudo systemctl start pigpiod
    sudo systemctl enable pigpiod
@@ -99,7 +98,7 @@ sudo apt-get upgrade
 luego mover el ejecutable a:
 
 ```bash
-cd /home/pi/kivy_venv/src/game/dist/
+cd /home/pi/env/src/game/dist/
 ```
 
 ## crear autoejecutable:
@@ -113,8 +112,8 @@ After=multi-user.target
 Wants=graphical.target
 
 [Service]
-ExecStart=/home/pi/kivy_venv/src/game/dist/main
-WorkingDirectory=/home/pi/kivy_venv/src/game
+ExecStart=/home/pi/env/src/game/dist/main
+WorkingDirectory=/home/pi/env/src/game
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 Restart=always
@@ -139,7 +138,7 @@ sudo systemctl enable game.service
 sudo systemctl start game.service
 
 cat /etc/systemd/system/game.service
-DISPLAY=:0 /home/pi/kivy_venv/src/game/dist/main
+DISPLAY=:0 /home/pi/env/src/game/dist/main
 journalctl -u game.service --no-pager --lines=50
 
 sudo systemctl status game.service
