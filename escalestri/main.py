@@ -1,64 +1,12 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import ObjectProperty, NumericProperty, StringProperty
+from kivy.properties import NumericProperty
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
 from functools import partial
-import logging
-import RPi.GPIO as GPIO
-import time
-
-PIN_EMERGENCY = 18
-PIN_SENSOR = 23
-PIN_MARCHA = 24
-PIN_BOCINA = 7
-TIEMPO_SIRENA = 3
-TIEMPO_1_SEC = 1
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-log = logging.getLogger(__name__)
-
-
-class Pin:
-    def __init__(self, channel, mode=GPIO.OUT):
-        self.channel = channel
-        self.mode = mode
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(True)
-
-        if self.mode == GPIO.IN:
-            GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        elif self.mode == GPIO.OUT:
-            GPIO.setup(self.channel, GPIO.OUT)
-
-    def cleanup(self):
-        GPIO.cleanup(self.channel)
-        log.info(f"clean: pin_{self.channel}")
-
-    def init_cb(self, my_callback):
-        if self.mode == GPIO.IN:
-            self.cb_on = True
-            GPIO.add_event_detect(self.channel, callback=my_callback, bouncetime=200)
-
-    def deinit_cb(self):
-        if self.cb_on:
-            GPIO.remove_event_detect(self.channel)
-            log.info(f"denit_callback: {self.channel}")
-
-    def turn_on(self):
-        if GPIO.gpio_function(self.channel) != GPIO.OUT:
-            raise RuntimeError("El pin no está configurado como salida.")
-        GPIO.output(self.channel, GPIO.HIGH)  # probar que se active
-        log.info(f"pin_{self.channel} ON")
-
-    def turn_off(self):
-        if GPIO.gpio_function(self.channel) != GPIO.OUT:
-            raise RuntimeError("El pin no está configurado como salida.")
-        GPIO.output(self.channel, GPIO.LOW)
-        log.info(f"pin_{self.channel} OFF")
+import time, threading
+from pins import *
 
 
 class Popup_banner(Popup):
@@ -72,26 +20,155 @@ class Popup_banner(Popup):
 class viewMain(Widget):
     main_mode = None
     current_state = None
-    laps = NumericProperty(0)  # Usar NumericProperty para las vueltas
-    backup_laps = NumericProperty(0)  # Propiedad para el respaldo de las vueltas
-    clock_event = None
-    init_game = None
-    init_detection = None
+    laps = NumericProperty(0)
+    backup_laps = NumericProperty(0)
+    current_game = False
+    init_counter = False
+    thread_claxon = 0
+    thread_sensor = 0
+    sound_claxon = False
+    popup = None
+    sensor_enabled = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.init_buttons()
-        # input de boton de emergencia
-        self.output_bocina = Pin(PIN_BOCINA)
-        self.output_start = Pin(PIN_MARCHA)
-        self.input_sensor_lap = Pin(PIN_SENSOR, GPIO.IN)
-        self.input_emergency = Pin(PIN_EMERGENCY, GPIO.IN)
-        self.input_emergency.init_cb(self.emergency_cb)
+        self.running = True
+        self.init_hmi_buts()
+        self.output_bocina = output_bocina
 
-    def emergency_cb(self):
-        log.warning("ZETA DE EMERGENCIA PRESIONADO")
+        self.thread_sensor = threading.Thread(target=self.sensor_thread, daemon=True)
+        self.thread_sensor.start()
+        self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
+        self.thread_claxon.start()
+        # funciones de botones externos
+        input_sensor.when_pressed = self.on_sensor
+        input_sensor.when_released = self.off_sensor
+        input_emergency.when_pressed = self.close_popup
+        input_emergency.when_released = self.show_popup
 
-    def init_buttons(self):
+        # inicia funciones de botones remotos
+        input_remote_bocina.when_pressed = output_bocina.on
+        input_remote_bocina.when_released = output_bocina.off
+
+        input_remote_marcha.when_pressed = lambda: Clock.schedule_once(
+            lambda dt: self._remote_marcha(), 0
+        )
+        input_remote_pausa.when_pressed = lambda: Clock.schedule_once(
+            lambda dt: self._remote_pausa(), 0
+        )
+        input_remote_paro.when_pressed = lambda: Clock.schedule_once(
+            lambda dt: self._remote_paro(), 0
+        )
+
+    def deinit(self):
+        self.running = False
+        try:
+            self.thread_sensor.join()
+            self.thread_claxon.join()
+            log.info("Hilos detenidos correctamente")
+        except Exception as e:
+            log.error(f"Error al detener los hilos: {e}")
+        finally:
+            output_marcha.off()
+            output_bocina.off()
+            input_emergency.close()
+            input_sensor.close()
+            output_bocina.close()
+            output_marcha.close()
+            input_remote_bocina.close()
+            input_remote_marcha.close()
+            input_remote_pausa.close()
+            input_remote_paro.close()
+            log.info("Pines cerrados correctamente")
+
+    # funciones de botones externos
+    def on_sensor(self):
+        self.sensor_enabled = True
+        time.sleep(TIEMPO_1_SEC)
+
+    def off_sensor(self):
+        self.sensor_enabled = False
+
+    def _remote_marcha(self):
+        log.info("marcha por remoto")
+        self.state_press(START)
+
+    def _remote_paro(self):
+        log.info("paro por remoto")
+        self.state_press(STOP)
+
+    def _remote_pausa(self):
+        log.info("pausa por remoto")
+        self.state_press(PAUSE)
+
+    # funciones de  pop up
+    def show_popup(self):
+        self.init_counter = False
+        output_marcha.off()
+        output_bocina.off()
+        log.info("SIRENA EMERGENCIA !!!")
+        Clock.schedule_once(self._open_popup, 0)
+
+    def close_popup(self):
+        self.current_state = STOP
+        Clock.schedule_once(self._dismiss_popup, 0)
+
+    def _open_popup(self, dt):
+        if not self.popup:
+            self.popup = Popup_banner()
+            self.popup.setup_text("ZETA DE EMERGENCIA PRESIONADO")
+            self.popup.open()
+
+    def _dismiss_popup(self, dt):
+        if self.popup:
+            self.popup.dismiss()
+            self.popup = None
+
+    def update_laps(self, delta, dt):
+        self.laps = max(0, self.laps + delta)
+        log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
+
+    # hilos en segundo plano deteccion de entradas
+    def sensor_thread(self):
+        log.warning("inicia hilo leer sensor")
+        while self.running:
+            try:
+                if not self.init_counter:
+                    time.sleep(BOUNCE_TIME)
+                    continue
+                # hay conteo
+                if self.sensor_enabled:
+                    mode_delta = {MANUAL: 1, AUTO: -1}
+                    delta = mode_delta.get(self.main_mode, 0)
+                    if delta != 0:
+                        Clock.schedule_once(partial(self.update_laps, delta))
+                # da cierre al evento de conteo si llega a cero o supera el numero max de vueltas
+                if (self.main_mode == MANUAL and self.laps >= MAX_LAPS) or (
+                    self.main_mode == AUTO and self.laps <= 0
+                ):
+                    self.init_counter = False
+                    self.clean_all()
+            except Exception as e:
+                log.error(f"Error en sensor_thread: {e}")
+                time.sleep(0.1)
+
+    def claxon_thread(self):
+        log.info("iniciando hilo de sirena")
+        while self.running:
+            try:
+                if self.sound_claxon:
+                    self.sound_claxon = False
+                    output_bocina.on()
+                    log.info("sonando Bocina !!!")
+                    time.sleep(TIEMPO_SIRENA)
+                    output_bocina.off()
+
+            except Exception as e:
+                log.error(f"Error en claxon_thread: {e}")
+                output_bocina.off()
+                time.sleep(0.1)
+
+    def init_hmi_buts(self):
         for btn_id in [
             "start_button",
             "pause_button",
@@ -100,23 +177,15 @@ class viewMain(Widget):
             "auto_button",
         ]:
             setattr(self, btn_id, self.ids[btn_id])
-
         self.start_button.disabled = True
         self.pause_button.disabled = True
 
-    def power_buzzer(self):
-        log.info("¡BUZZZZZ !!!!!")  # Usar logging
-        self.output_bocina.turn_on()
-        time.sleep(TIEMPO_SIRENA)
-        self.output_bocina.turn_off()
-
-    def special_buttons(self, button_id):
-        actions = {
-            "buzzer": ("bocina!", self.power_buzzer),
+        self.buttons = [self.manual_button, self.auto_button, self.start_button]
+        self.modes = {
+            AUTO: self.auto_button,
+            MANUAL: self.manual_button,
         }
-        if button_id in actions:
-            action = actions[button_id]
-            action()
+        log.info("INICIANDO APP")
 
     def set_timers(self, id_button, dt):
         timers = {
@@ -125,17 +194,17 @@ class viewMain(Widget):
         }
         if id_button in timers:
             increment = timers[id_button]
-            self.laps = max(0, min(50, self.laps + increment))
+            self.laps = max(0, min(MAX_LAPS, self.laps + increment))
 
     def on_button_press(self, button):
         self.continuous_event = None
-        if self.current_state == "STOP" and self.main_mode == "AUTO":
+        if self.current_state == STOP:
             self.continuous_event = Clock.schedule_interval(
                 partial(self.set_timers, button), 0.1
             )
 
     def on_button_release(self):
-        if self.current_state == "STOP" and self.continuous_event:
+        if self.current_state == STOP and self.continuous_event:
             self.continuous_event.cancel()
             self.backup_laps = self.laps
             log.info(f"vueltas definidas: {self.laps}")
@@ -146,100 +215,91 @@ class viewMain(Widget):
         self.pause_button.disabled = True
         self.start_button.disabled = True
         self.current_state = None
-
+        log.info(f"main_mode: {self.main_mode}")
         if mode_state == "down":
-            self.current_state = "STOP"
+            self.current_state = STOP
             self.start_button.disabled = False
 
-    def state_press(self, choised_state, state_value):
+    def state_press(self, choised_state):
         if self.current_state is None:
             return
-
-        if choised_state == "STOP":
+        if choised_state == STOP:
             self.clean_all()
             return
-
-        if choised_state == "PAUSE":
-            self.current_state = "PAUSE"
-            self.init_detection = False
-            log.info("Pausar evento")
-            self.start_button.disabled = False
-            self.pause_button.disabled = True
-            self.pause_button.state = "normal"
-            self.output_start.turn_off()
+        elif choised_state == PAUSE:
+            self._pause_event()
+            return
+        elif choised_state == START:
+            self._start_event()
             return
 
-        if choised_state == "START":
-            self.manual_button.disabled = True
-            self.auto_button.disabled = True
-            self.pause_button.disabled = False
-            self.start_button.disabled = True
-            self.start_button.state = "normal"
+    def _pause_event(self):
+        # animicacion de botones HMI pausa
+        self.start_button.disabled = False
+        self.pause_button.disabled = True
+        self.pause_button.state = "normal"
+        log.info("Pausar evento")
+        self.current_state = PAUSE
+        self.init_counter = False
+        output_marcha.off()
 
-            if self.current_state == "STOP":
-                self.current_state = "START"
-                self.backup_laps = self.laps
-
-                if self.main_mode == "AUTO":
-                    self.laps = self.backup_laps
-                elif self.main_mode == "MANUAL":
-                    self.laps = 0
-
-                self.init_game = True
-                self.init_detection = True
-                log.info("Iniciar evento")
-                self.output_start.turn_on()
-                self.input_sensor_lap.init_cb(self.counter_cb)
-                return
-
-            if self.current_state == "PAUSE":
-                self.current_state = "START"
-                self.init_detection = True
-                log.info("Re-iniciar evento")
-                return
-
-    def counter_cb(self, ch):
-        if self.init_detection:
-            if self.main_mode == "MANUAL":
-                self.laps += 1
-            elif self.main_mode == "AUTO":
-                self.laps -= 1
-                if self.laps <= 0:
-                    self.init_detection = False
-                    self.clean_all()
+    def _start_event(self):
+        # animacion de botones hmi
+        self.manual_button.disabled = True
+        self.auto_button.disabled = True
+        self.pause_button.disabled = False
+        self.start_button.disabled = True
+        self.start_button.state = "normal"
+        log.info(
+            "Iniciar evento" if self.current_state == STOP else "Re-iniciar evento"
+        )
+        if self.current_state == STOP:
+            # activa sirena de inicio
+            self.sound_claxon = True
+            # guarda las vueltas seleccionadas
+            self.backup_laps = self.laps
+            # actualiza la vueltas en la HMI
+            self.laps = self.backup_laps if self.main_mode == AUTO else 0
+        self.current_state = START
+        self.current_game = True
+        self.init_counter = True
+        output_marcha.on()
 
     def clean_all(self):
-        if self.main_mode is not None and self.init_game:
-            self.power_buzzer()
-            self.init_game = False
-
-        log.info("Apagando el evento")
-        self.current_state = "STOP"
-        self.output_start.turn_off()
-        self.input_sensor_lap.deinit_cb()
-
-        self.manual_button.disabled = False
-        self.auto_button.disabled = False
-        self.start_button.disabled = False
+        if self.main_mode is None:
+            return
+        # off conteo
+        log.info("-------------")
+        if self.init_counter:
+            self.init_counter = False
+            # sonar sirena fin de juego
+            self.sound_claxon = True
+            log.info("FIN de juego")
+        # recupero vueltas seleccionadas
+        self.laps = self.backup_laps
+        # parametros stop default
+        self.current_state = STOP
+        output_marcha.off()
+        "animacion de los botones default"
+        for button in self.buttons:
+            button.disabled = False
         self.start_button.state = "normal"
         self.pause_button.disabled = True
-
-        self.laps = self.backup_laps
-        if self.main_mode == "AUTO":
-            self.manual_button.state = "normal"
-            self.auto_button.state = "down"
-        elif self.main_mode == "MANUAL":
-            self.manual_button.state = "down"
-            self.auto_button.state = "normal"
+        for mode, button in self.modes.items():
+            button.state = "down" if self.main_mode == mode else "normal"
+        log.info(f"limpiando en modo {self.main_mode}")
+        log.info("-------------")
 
 
-class escalestriApp(App):
+class vistaApp(App):
     def build(self):
         Window.borderless = False
-        Window.fullscreen = True
-
+        Window.fullscreen = False
         return viewMain()
 
 
 if __name__ == "__main__":
-    escalestriApp().run()
+    try:
+        vistaApp().run()
+    except Exception as e:
+        log.error(f"error de excepcion {e}")
