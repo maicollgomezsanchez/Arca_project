@@ -309,6 +309,12 @@ class vistaApp(App):
         return viewMain()
 
 
+    def on_stop(self):
+        # Llamar a deinit() explícitamente
+        app_widget = self.root
+        app_widget.deinit()
+
+
 if __name__ == "__main__":
     try:
         vistaApp().run()
