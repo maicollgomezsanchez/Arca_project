@@ -25,7 +25,7 @@ from hardware import (
     PAUSE,
     AUTO,
     MANUAL,
-    close_all_pins
+    close_all_pins,
 )
 
 
@@ -307,7 +307,6 @@ class vistaApp(App):
         Window.borderless = False
         Window.fullscreen = False
         return viewMain()
-
 
     def on_stop(self):
         # Llamar a deinit() explícitamente
