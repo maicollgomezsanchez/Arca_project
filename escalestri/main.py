@@ -6,7 +6,27 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from functools import partial
 import time, threading
-from pins import *
+from hardware import (
+    log,
+    input_emergency,
+    input_sensor,
+    input_remote_paro,
+    input_remote_bocina,
+    input_remote_marcha,
+    input_remote_pausa,
+    output_marcha,
+    output_bocina,
+    TIEMPO_1_SEC,
+    TIEMPO_SIRENA,
+    BOUNCE_TIME,
+    MAX_LAPS,
+    START,
+    STOP,
+    PAUSE,
+    AUTO,
+    MANUAL,
+    close_all_pins
+)
 
 
 class Popup_banner(Popup):
@@ -69,16 +89,7 @@ class viewMain(Widget):
         except Exception as e:
             log.error(f"Error al detener los hilos: {e}")
         finally:
-            output_marcha.off()
-            output_bocina.off()
-            input_emergency.close()
-            input_sensor.close()
-            output_bocina.close()
-            output_marcha.close()
-            input_remote_bocina.close()
-            input_remote_marcha.close()
-            input_remote_pausa.close()
-            input_remote_paro.close()
+            close_all_pins()
             log.info("Pines cerrados correctamente")
 
     # funciones de botones externos
@@ -90,15 +101,15 @@ class viewMain(Widget):
         self.sensor_enabled = False
 
     def _remote_marcha(self):
-        log.info("marcha por remoto")
+        log.warning("marcha por remoto")
         self.state_press(START)
 
     def _remote_paro(self):
-        log.info("paro por remoto")
+        log.warning("paro por remoto")
         self.state_press(STOP)
 
     def _remote_pausa(self):
-        log.info("pausa por remoto")
+        log.warning("pausa por remoto")
         self.state_press(PAUSE)
 
     # funciones de  pop up
@@ -130,7 +141,7 @@ class viewMain(Widget):
 
     # hilos en segundo plano deteccion de entradas
     def sensor_thread(self):
-        log.warning("inicia hilo leer sensor")
+        log.debug("inicia hilo leer sensor")
         while self.running:
             try:
                 if not self.init_counter:

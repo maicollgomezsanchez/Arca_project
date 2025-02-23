@@ -4,7 +4,10 @@ from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.uix.button import Button as KivyButton
-from pins_config import *
+from hardware import (
+    input_sensor,
+    close_all_pins,
+)
 
 class GPIOApp(App):
     def build(self):
@@ -50,4 +53,10 @@ class GPIOApp(App):
         self.btn_marcha.text = "Esperando entrada..."
 
 if __name__ == "__main__":
-    GPIOApp().run()
+    try:
+        GPIOApp().run()
+    except KeyboardInterrupt:
+        print("Interrupción por teclado")
+    finally:
+        close_all_pins()
+        print("FIN")

@@ -73,6 +73,13 @@ input_remote_paro = Button(PIN_REMOTO_PARO, pull_up=True, bounce_time=BOUNCE_TIM
 input_remote_pausa = Button(PIN_REMOTO_PAUSA, pull_up=True, bounce_time=BOUNCE_TIME)
 input_remote_bocina = Button(PIN_REMOTO_BOCINA, pull_up=True, bounce_time=BOUNCE_TIME)
 
-def deinit_pins(pin):
-    pin.close()
-    pass
+def close_all_pins():
+    output_bocina.close()
+    output_marcha.close()
+    output_moneda.close()
+    input_emergency.close()
+    input_sensor.close()
+    input_remote_marcha.close()
+    input_remote_paro.close()
+    input_remote_pausa.close()
+    input_remote_bocina.close()
