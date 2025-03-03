@@ -24,6 +24,7 @@ PIN_MONEDA = 13  # 33
 # configuraciones
 TIEMPO_SIRENA = 2
 TIEMPO_1_SEC = 1
+TIEMPO_SENSOR = 0.1
 MAX_LAPS = 50
 BOUNCE_TIME = 0.3
 
@@ -67,7 +68,7 @@ output_bocina = LED(PIN_BOCINA, initial_value=False)
 output_marcha = LED(PIN_MARCHA, initial_value=False)
 output_moneda = LED(PIN_MONEDA, initial_value=False)
 input_emergency = Button(PIN_EMERGENCY, pull_up=True, bounce_time=BOUNCE_TIME)
-input_sensor = Button(PIN_SENSOR, pull_up=True, bounce_time=BOUNCE_TIME)
+input_sensor = Button(PIN_SENSOR, pull_up=True, bounce_time=TIEMPO_SENSOR)
 input_remote_marcha = Button(PIN_REMOTO_MARCHA, pull_up=True, bounce_time=BOUNCE_TIME)
 input_remote_paro = Button(PIN_REMOTO_PARO, pull_up=True, bounce_time=BOUNCE_TIME)
 input_remote_pausa = Button(PIN_REMOTO_PAUSA, pull_up=True, bounce_time=BOUNCE_TIME)

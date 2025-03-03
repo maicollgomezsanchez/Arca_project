@@ -16,7 +16,6 @@ from hardware import (
     input_remote_pausa,
     output_marcha,
     output_bocina,
-    TIEMPO_1_SEC,
     TIEMPO_SIRENA,
     BOUNCE_TIME,
     MAX_LAPS,
@@ -42,34 +41,30 @@ class viewMain(Widget):
     current_state = None
     laps = NumericProperty(0)
     backup_laps = NumericProperty(0)
-    current_game = False
     init_counter = False
+    sensor_pressed = False
     thread_claxon = 0
-    thread_sensor = 0
     sound_claxon = False
     popup = None
-    sensor_enabled = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.running = True
         self.init_hmi_buts()
         self.output_bocina = output_bocina
-
-        self.thread_sensor = threading.Thread(target=self.sensor_thread, daemon=True)
-        self.thread_sensor.start()
         self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
         self.thread_claxon.start()
         # funciones de botones externos
-        input_sensor.when_pressed = self.on_sensor
         input_sensor.when_released = self.off_sensor
+        input_sensor.when_pressed = self.on_sensor
+
         input_emergency.when_pressed = self.close_popup
-        input_emergency.when_released = self.show_popup
+        # input_emergency.when_released = self.show_popup
 
         # inicia funciones de botones remotos
-        input_remote_bocina.when_pressed = output_bocina.on
-        input_remote_bocina.when_released = output_bocina.off
+        output_bocina.source = input_remote_bocina
 
+        """
         input_remote_marcha.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_marcha(), 0
         )
@@ -79,11 +74,11 @@ class viewMain(Widget):
         input_remote_paro.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_paro(), 0
         )
+        """
 
     def deinit(self):
         self.running = False
         try:
-            self.thread_sensor.join()
             self.thread_claxon.join()
             log.info("Hilos detenidos correctamente")
         except Exception as e:
@@ -94,11 +89,26 @@ class viewMain(Widget):
 
     # funciones de botones externos
     def on_sensor(self):
-        self.sensor_enabled = True
-        time.sleep(TIEMPO_1_SEC)
+        if not self.sensor_pressed:
+            self.sensor_pressed = True
+            if not self.init_counter:
+                return
+            # cambia la variable cuando presiona el boton
+            mode_delta = {MANUAL: 1, AUTO: -1}
+            delta = mode_delta.get(self.main_mode, 0)
+            if delta != 0:
+                self.laps = max(0, self.laps + delta)
+                log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
+            # cerrar si llega a limites
+            if (self.main_mode == MANUAL and self.laps >= MAX_LAPS) or (
+                self.main_mode == AUTO and self.laps <= 0
+            ):
+                self.init_counter = False
+                self.clean_all()
 
     def off_sensor(self):
-        self.sensor_enabled = False
+        if self.sensor_pressed:
+            self.sensor_pressed = False
 
     def _remote_marcha(self):
         log.warning("marcha por remoto")
@@ -135,37 +145,10 @@ class viewMain(Widget):
             self.popup.dismiss()
             self.popup = None
 
-    def update_laps(self, delta, dt):
-        self.laps = max(0, self.laps + delta)
-        log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
-
-    # hilos en segundo plano deteccion de entradas
-    def sensor_thread(self):
-        log.debug("inicia hilo leer sensor")
-        while self.running:
-            try:
-                if not self.init_counter:
-                    time.sleep(BOUNCE_TIME)
-                    continue
-                # hay conteo
-                if self.sensor_enabled:
-                    mode_delta = {MANUAL: 1, AUTO: -1}
-                    delta = mode_delta.get(self.main_mode, 0)
-                    if delta != 0:
-                        Clock.schedule_once(partial(self.update_laps, delta))
-                # da cierre al evento de conteo si llega a cero o supera el numero max de vueltas
-                if (self.main_mode == MANUAL and self.laps >= MAX_LAPS) or (
-                    self.main_mode == AUTO and self.laps <= 0
-                ):
-                    self.init_counter = False
-                    self.clean_all()
-            except Exception as e:
-                log.error(f"Error en sensor_thread: {e}")
-                time.sleep(0.1)
-
     def claxon_thread(self):
         log.info("iniciando hilo de sirena")
         while self.running:
+            time.sleep(0.1)
             try:
                 if self.sound_claxon:
                     self.sound_claxon = False
@@ -177,7 +160,6 @@ class viewMain(Widget):
             except Exception as e:
                 log.error(f"Error en claxon_thread: {e}")
                 output_bocina.off()
-                time.sleep(0.1)
 
     def init_hmi_buts(self):
         for btn_id in [
@@ -272,7 +254,6 @@ class viewMain(Widget):
             # actualiza la vueltas en la HMI
             self.laps = self.backup_laps if self.main_mode == AUTO else 0
         self.current_state = START
-        self.current_game = True
         self.init_counter = True
         output_marcha.on()
 
