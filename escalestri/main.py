@@ -45,6 +45,7 @@ class viewMain(Widget):
     sensor_pressed = False
     sound_claxon = False
     popup = None
+    popup_enabled = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -89,24 +90,27 @@ class viewMain(Widget):
     def on_sensor(self):
         if not self.sensor_pressed:
             self.sensor_pressed = True
+
             if not self.init_counter:
                 return
             # cambia la variable cuando presiona el boton
             mode_delta = {MANUAL: 1, AUTO: -1}
             delta = mode_delta.get(self.main_mode, 0)
+
             if delta != 0:
                 self.laps = max(0, self.laps + delta)
                 log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
             # cerrar si llega a limites
-            if (self.main_mode == MANUAL and self.laps >= MAX_LAPS) or (
-                self.main_mode == AUTO and self.laps <= 0
-            ):
-                self.init_counter = False
+            limit_manual = self.main_mode is MANUAL and self.laps is MAX_LAPS
+            limit_auto = self.main_mode is AUTO and self.laps is 0
+
+            if limit_auto or limit_manual:
                 self.clean_all()
 
     def off_sensor(self):
         if self.sensor_pressed:
             self.sensor_pressed = False
+
 
     def _remote_marcha(self):
         log.warning("marcha por remoto")
@@ -122,15 +126,19 @@ class viewMain(Widget):
 
     # funciones de  pop up
     def show_popup(self):
-        self.init_counter = False
-        output_marcha.off()
-        output_bocina.off()
-        log.info("SIRENA EMERGENCIA !!!")
-        Clock.schedule_once(self._open_popup, 0)
+        if not self.popup_enabled:
+            self.popup_enabled = True
+            self.init_counter = False
+            output_marcha.off()
+            output_bocina.off()
+            log.info("SIRENA EMERGENCIA !!!")
+            Clock.schedule_once(self._open_popup, 0)
 
     def close_popup(self):
-        self.current_state = STOP
-        Clock.schedule_once(self._dismiss_popup, 0)
+        if self.popup_enabled:
+            self.popup_enabled = False
+            self.current_state = STOP
+            Clock.schedule_once(self._dismiss_popup, 0)
 
     def _open_popup(self, dt):
         if not self.popup:
@@ -265,8 +273,8 @@ class viewMain(Widget):
         log.info("-------------")
         if self.init_counter:
             self.init_counter = False
-            # sonar sirena fin de juego
             self.sound_claxon = True
+            # sonar sirena fin de juego
             log.info("FIN de juego")
         # recupero vueltas seleccionadas
         self.laps = self.backup_laps
@@ -286,8 +294,8 @@ class viewMain(Widget):
 
 class gameApp(App):
     def build(self):
-        Window.borderless = False
-        Window.fullscreen = False
+        Window.borderless = True
+        Window.fullscreen = True
         return viewMain()
 
     def on_stop(self):
