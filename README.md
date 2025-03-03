@@ -90,9 +90,7 @@ sudo apt-get upgrade
    sudo apt install python3-pip python3-dev -y
    sudo apt install python3-rpi.gpio python3-pigpio python3-gpiozero -y
 
-   pyinstaller --onefile  --windowed --add-data="vista.kv:." main.py
-
-   pyinstaller --onefile  hmi.py
+   pyinstaller --onefile  --windowed --add-data="main.kv:." main.py
 
 ```
 luego mover el ejecutable a:

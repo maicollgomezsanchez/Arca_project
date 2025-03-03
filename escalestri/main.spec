@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['escalestri.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('vista.kv', 'vista.kv')],
+    datas=[('game.kv', 'game.kv'), ('hardware.py', 'hardware.py')],
     hiddenimports=[
     'gpiozero',
     'gpiozero.pins.rpigpio',
@@ -29,14 +29,14 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='escalestri',
+    name='main',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
