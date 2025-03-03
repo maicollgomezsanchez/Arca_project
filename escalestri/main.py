@@ -43,7 +43,6 @@ class viewMain(Widget):
     backup_laps = NumericProperty(0)
     init_counter = False
     sensor_pressed = False
-    thread_claxon = 0
     sound_claxon = False
     popup = None
 
@@ -221,7 +220,7 @@ class viewMain(Widget):
             self._pause_event()
             return
         elif choised_state == START:
-            if  self.main_mode == AUTO and self.laps == 0:
+            if self.main_mode == AUTO and self.laps == 0:
                 return
             self._start_event()
             return
@@ -253,7 +252,7 @@ class viewMain(Widget):
             self.backup_laps = self.laps
             # actualiza la vueltas en la HMI
             self.laps = self.backup_laps if self.main_mode == AUTO else 0
-        
+
         self.current_state = START
         self.init_counter = True
         output_marcha.on()
