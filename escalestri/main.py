@@ -61,7 +61,8 @@ class viewMain(Widget):
         input_emergency.when_released = self.show_popup
 
         # inicia funciones de botones remotos
-        output_bocina.source = input_remote_bocina
+        input_remote_bocina.when_pressed = output_bocina.on
+        input_remote_bocina.when_released = output_bocina.off
 
         input_remote_marcha.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_marcha(), 0
@@ -283,7 +284,7 @@ class viewMain(Widget):
         log.info("-------------")
 
 
-class vistaApp(App):
+class gameApp(App):
     def build(self):
         Window.borderless = False
         Window.fullscreen = False
@@ -297,6 +298,6 @@ class vistaApp(App):
 
 if __name__ == "__main__":
     try:
-        vistaApp().run()
+        gameApp().run()
     except Exception as e:
         log.error(f"error de excepcion {e}")

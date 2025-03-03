@@ -146,3 +146,19 @@ sudo systemctl restart game.service
 
 sudo systemctl disable game.service
 ```
+
+```bash
+mkdir -p ~/.config/autostart
+nano ~/.config/autostart/myscript.desktop
+
+[Desktop Entry]
+Type=Application
+Name=Mi script de inicio
+Exec=/bin/bash -c "source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py >> /home/pi/log/startup_log.txt 2>&1"
+X-GNOME-Autostart-enabled=true
+
+
+chmod +x /home/pi/env/src/game/main.py
+sudo nano /etc/xdg/lxsession/LXDE-pi/autostart
+
+```
