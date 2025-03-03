@@ -59,12 +59,11 @@ class viewMain(Widget):
         input_sensor.when_pressed = self.on_sensor
 
         input_emergency.when_pressed = self.close_popup
-        # input_emergency.when_released = self.show_popup
+        input_emergency.when_released = self.show_popup
 
         # inicia funciones de botones remotos
         output_bocina.source = input_remote_bocina
 
-        """
         input_remote_marcha.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_marcha(), 0
         )
@@ -74,7 +73,6 @@ class viewMain(Widget):
         input_remote_paro.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_paro(), 0
         )
-        """
 
     def deinit(self):
         self.running = False
@@ -223,6 +221,8 @@ class viewMain(Widget):
             self._pause_event()
             return
         elif choised_state == START:
+            if  self.main_mode == AUTO and self.laps == 0:
+                return
             self._start_event()
             return
 
@@ -253,6 +253,7 @@ class viewMain(Widget):
             self.backup_laps = self.laps
             # actualiza la vueltas en la HMI
             self.laps = self.backup_laps if self.main_mode == AUTO else 0
+        
         self.current_state = START
         self.init_counter = True
         output_marcha.on()

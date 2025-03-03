@@ -75,6 +75,9 @@ input_remote_pausa = Button(PIN_REMOTO_PAUSA, pull_up=True, bounce_time=BOUNCE_T
 input_remote_bocina = Button(PIN_REMOTO_BOCINA, pull_up=True, bounce_time=BOUNCE_TIME)
 
 def close_all_pins():
+    output_bocina.off()
+    output_marcha.off()
+    output_moneda.off()
     output_bocina.close()
     output_marcha.close()
     output_moneda.close()
