@@ -27,6 +27,10 @@ from hardware import (
     close_all_pins,
 )
 
+def window_setup():
+    Window.borderless = True
+    Window.fullscreen = True
+    Window.show_cursor = False
 
 class Popup_banner(Popup):
     def __init__(self, **kwargs):
@@ -292,8 +296,7 @@ class viewMain(Widget):
 
 class gameApp(App):
     def build(self):
-        Window.borderless = True
-        Window.fullscreen = True
+        window_setup()
         return viewMain()
 
     def on_stop(self):
