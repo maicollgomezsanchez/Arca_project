@@ -57,26 +57,22 @@ sudo apt-get upgrade
     pip install RPi.GPIO pigpio
     pip3 install --upgrade pyinstaller
     pyinstaller --version
-    mkdir env/src/game
-
-   sudo systemctl start pigpiod
-   sudo systemctl enable pigpiod
-   sudo systemctl status pigpiod
 
 
 ```
+    pass: R4spb3rr7
 
 ## ocultar arranque:
 ```bash
-    pass: R4spb3rr7
-    sudo nano /boot/firmware/cmdline.txt:
-        loglevel=1 quiet splash vt.global_cursor_default=0
+   sudo nano /boot/firmware/cmdline.txt
+
+   console=tty3 root=PARTUUID=a9f6c71a-02 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet splash loglevel=0 logo.nologo vt.global_cursor_default=0
 
    sudo apt install plymouth plymouth-themes
    sudo plymouth-set-default-theme details
    sudo update-initramfs -u
 
-   sudo nano /etc/lightdm/lightdm-autologin.conf:
+   sudo nano /etc/lightdm/lightdm-autologin.conf
         autologin-user = pi
         autologin-user-timeout = 0
    
@@ -91,6 +87,9 @@ sudo apt-get upgrade
    sudo apt install python3-rpi.gpio python3-pigpio python3-gpiozero -y
 
    pyinstaller --onefile  --windowed --add-data="main.kv:." main.py
+   or 
+   pyinstaller main.spec
+
 
 ```
 luego mover el ejecutable a:
@@ -110,23 +109,19 @@ After=multi-user.target
 Wants=graphical.target
 
 [Service]
-ExecStart=/home/pi/env/src/game/dist/main
-WorkingDirectory=/home/pi/env/src/game
+User=pi
+ExecStart=/bin/bash -c "source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py"
+WorkingDirectory=/home/pi/
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
+StandardOutput=append:/home/pi/log/startup_log.txt
+StandardError=append:/home/pi/log/startup_log.txt
 Restart=always
-User=pi
-Group=pi
-
-ExecStartPre=/bin/sh -c 'chmod a+rw /dev/gpiomem'
-ExecStartPre=/bin/sh -c 'chmod a+rw /sys/class/gpio/*'
-ExecStartPre=/bin/sh -c 'chmod a+rw /dev/mem'
-
-ExecStartPre=/usr/bin/systemctl start pigpiod
-ExecStartPre=/bin/sleep 5
+RestartSec=1
 
 [Install]
 WantedBy=graphical.target
+
 ```
 ## comandos de servicio de auto ejecucion y encendido automatico
 
@@ -140,23 +135,27 @@ DISPLAY=:0 /home/pi/env/src/game/dist/main
 journalctl -u game.service --no-pager --lines=50
 
 sudo systemctl status game.service
-sudo systemctl restart game.service
-
-sudo systemctl disable game.service
+sudo systemctl stop game.service
+sudo systemctl disabled game.service
 ```
 
 ```bash
 mkdir -p ~/.config/autostart
 nano ~/.config/autostart/myscript.desktop
 
+
 [Desktop Entry]
 Type=Application
-Name=Mi script de inicio
-Exec=/bin/bash -c "source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py >> /home/pi/log/startup_log.txt 2>&1"
+Name=startgamebash
+Exec=/bin/bash -c "echo 'Iniciando el script' > /home/pi/log/startup_log.txt && source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py >> /home/pi/log/startup_log.txt 2>&1"
+Hidden=false
+NoDisplay=false
 X-GNOME-Autostart-enabled=true
+```
 
+```bash
 
 chmod +x /home/pi/env/src/game/main.py
 sudo nano /etc/xdg/lxsession/LXDE-pi/autostart
-
 ```
+configuara el kivi init

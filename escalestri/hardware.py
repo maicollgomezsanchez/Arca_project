@@ -5,7 +5,8 @@ from gpiozero import LED, Button
 
 Device.pin_factory = PiGPIOFactory()
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S' 
 )
 log = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ TIEMPO_SIRENA = 2
 TIEMPO_1_SEC = 1
 TIEMPO_SENSOR = 0.1
 MAX_LAPS = 50
-BOUNCE_TIME = 0.3
+BOUNCE_TIME = 0.1
 
 START, STOP, PAUSE, MANUAL, AUTO, SEMI = (
     "START",
