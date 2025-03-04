@@ -171,10 +171,11 @@
                 orientation: 'vertical'
                 size_hint_y: 1
                 BoxLayout:
+                    size_hint_y: 0.1
                 # Boton bocina
                 Button:
                     text: "BOCINA"
-                    height: self.parent.height * 0.2
+                    height: self.parent.height * 0.6
                     on_press: root.output_bocina.on()
                     on_release: root.output_bocina.off()
                     canvas.before:
@@ -187,6 +188,7 @@
                     on_press: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_btn_press)
                     on_release: self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_bocina) 
                 BoxLayout:
+                    size_hint_y: 0.1
         # Tercera fila
         BoxLayout:
             orientation: 'horizontal'

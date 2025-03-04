@@ -101,8 +101,8 @@ class viewMain(Widget):
                 self.laps = max(0, self.laps + delta)
                 log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
             # cerrar si llega a limites
-            limit_manual = self.main_mode is MANUAL and self.laps is MAX_LAPS
-            limit_auto = self.main_mode is AUTO and self.laps is 0
+            limit_manual = self.main_mode == MANUAL and self.laps == MAX_LAPS
+            limit_auto = self.main_mode == AUTO and self.laps == 0
 
             if limit_auto or limit_manual:
                 self.clean_all()
@@ -110,7 +110,6 @@ class viewMain(Widget):
     def off_sensor(self):
         if self.sensor_pressed:
             self.sensor_pressed = False
-
 
     def _remote_marcha(self):
         log.warning("marcha por remoto")
@@ -129,8 +128,8 @@ class viewMain(Widget):
         if not self.popup_enabled:
             self.popup_enabled = True
             self.init_counter = False
-            output_marcha.off()
             output_bocina.off()
+            self.clean_all()
             log.info("SIRENA EMERGENCIA !!!")
             Clock.schedule_once(self._open_popup, 0)
 
@@ -184,7 +183,6 @@ class viewMain(Widget):
             AUTO: self.auto_button,
             MANUAL: self.manual_button,
         }
-        log.info("INICIANDO APP")
 
     def set_timers(self, id_button, dt):
         timers = {
