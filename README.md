@@ -69,27 +69,10 @@ cd sudo nano /home/pi/.kivy/config.ini
 ```
 reemplazar por  /kivy/config.ini
 
-
 ## ocultar arranque:
 ```bash
    sudo nano /boot/firmware/cmdline.txt
    console=serial0,115200 console=tty3 root=PARTUUID=xxxxxx-xx rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
-```
-
-
-## crear ejecutable
-
-```bash
-   pyinstaller --onefile  --windowed --add-data="main.kv:." main.py
-   or 
-   pyinstaller main.spec
-
-
-```
-luego mover el ejecutable a:
-
-```bash
-cd /home/pi/env/src/game/dist/
 ```
 
 ## crear servicio:
@@ -99,12 +82,14 @@ sudo nano /etc/systemd/system/game.service
 
 [Unit]
 Description=Game_App
-After=multi-user.target
+After=pigpiod.service multi-user.target 
 Wants=graphical.target
+Requires=pigpiod.service
 
 [Service]
 User=pi
-ExecStart=/bin/bash -c "echo 'Iniciando el script' > /home/pi/log/logs.txt && source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py >> /home/pi/log/logs.txt 2>&1"
+ExecStart=/home/pi/env/src/game/dist/main
+#ExecStart=/bin/bash -c "/home/pi/env/src/game/dist/main >> /home/pi/log/logs.txt 2>&1"
 WorkingDirectory=/home/pi/
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
@@ -123,14 +108,55 @@ WantedBy=graphical.target
 sudo systemctl daemon-reload
 sudo systemctl enable game.service
 sudo systemctl start game.service
-
-cat /etc/systemd/system/game.service
-DISPLAY=:0 /home/pi/env/src/game/dist/main
 journalctl -u game.service --no-pager --lines=50
-
 sudo systemctl status game.service
 sudo systemctl stop game.service
 sudo systemctl disabled game.service
+cat /home/pi/log/logs.txt
 ```
 
-configuara el kivi init
+## crear ejecutable
+iniciar el entorno virtual
+
+```bash
+   pyinstaller --onefile  --windowed --add-data="game.kv:." --add-data="hardware.py:." main.py
+   or 
+   pyinstaller main.spec
+```
+luego mover el ejecutable a:
+
+```bash
+cd /home/pi/env/src/game/dist/
+```
+
+## calibrando el tactil
+```bash
+sudo nano /boot/firmware/config.txt
+   display_rotate=0
+   hdmi_force_hotplug=1
+   hdmi_mode=87
+   hdmi_cvt=1024 600 60 3 0 0 0
+
+sudo nano /usr/share/X11/xorg.conf.d/40-libinput.conf 
+   Option "CalibrationMatrix" "1 0 0 0 1 0 0 0 1"
+   
+sudo cp /usr/share/X11/xorg.conf.d/40-libinput.conf /etc/X11/xorg.conf.d/
+
+sudo apt-get update
+sudo apt-get install xinput xinput-calibrator
+
+xinput list
+xinput_calibrator --device "xwayland-touch:14"
+sudo nanod /etc/X11/xorg.conf.d/99-calibration.conf         
+   Section "InputClass"
+      Identifier      "calibration"
+      MatchProduct    "xwayland-touch:14"
+      Option  "MinX"  "443"
+      Option  "MaxX"  "65764"
+      Option  "MinY"  "437"
+      Option  "MaxY"  "63787"
+      Option  "SwapXY"        "0" # unless it was already set to 1
+      Option  "InvertX"       "0"  # unless it was already set
+      Option  "InvertY"       "0"  # unless it was already set
+   EndSection
+```
