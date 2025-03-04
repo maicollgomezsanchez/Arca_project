@@ -46,46 +46,40 @@ sudo apt-get upgrade
 ## crear entorno virtual:
 
 ```bash
-    sudo apt install python3-gpiozero
-    python3 -m venv env
-    #entrar a entorno
-    source env/bin/activate
-    pip3 install kivy
-    pip3 install gpiozero
-    pip3 install lgpio
-    sudo apt install pigpio
-    pip install RPi.GPIO pigpio
-    pip3 install --upgrade pyinstaller
-    pyinstaller --version
+   #crear entorno virtual
+   python3 -m venv env
+   #entrar a entorno
+   source env/bin/activate
+   python3 -m pip install --upgrade pip setuptools virtualenv
+   pip install kivy
+   sudo apt-get install libgl1-mesa-glx libgles2-mesa libegl1-mesa libmtdev1
+   pip install gpiozero
 
+   sudo apt install python3-pip python3-dev -y
+   sudo apt install python3-rpi.gpio python3-pigpio python3-gpiozero -y
+   pip install --upgrade pyinstaller
+   pyinstaller --version
+   sudo pigpiod
+```
+## cambiar el config.init de kivy:
+
+```bash
+cd sudo nano /home/pi/.kivy/config.ini 
 
 ```
-    pass: R4spb3rr7
+reemplazar por  /kivy/config.ini
+
 
 ## ocultar arranque:
 ```bash
    sudo nano /boot/firmware/cmdline.txt
-
-   console=tty3 root=PARTUUID=a9f6c71a-02 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet splash loglevel=0 logo.nologo vt.global_cursor_default=0
-
-   sudo apt install plymouth plymouth-themes
-   sudo plymouth-set-default-theme details
-   sudo update-initramfs -u
-
-   sudo nano /etc/lightdm/lightdm-autologin.conf
-        autologin-user = pi
-        autologin-user-timeout = 0
-   
-    sudo reboot 
+   console=serial0,115200 console=tty3 root=PARTUUID=xxxxxx-xx rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
 ```
 
 
-## crear aplicacion
+## crear ejecutable
 
 ```bash
-   sudo apt install python3-pip python3-dev -y
-   sudo apt install python3-rpi.gpio python3-pigpio python3-gpiozero -y
-
    pyinstaller --onefile  --windowed --add-data="main.kv:." main.py
    or 
    pyinstaller main.spec
@@ -98,7 +92,7 @@ luego mover el ejecutable a:
 cd /home/pi/env/src/game/dist/
 ```
 
-## crear autoejecutable:
+## crear servicio:
 
 ```bash
 sudo nano /etc/systemd/system/game.service
@@ -110,12 +104,12 @@ Wants=graphical.target
 
 [Service]
 User=pi
-ExecStart=/bin/bash -c "source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py"
+ExecStart=/bin/bash -c "echo 'Iniciando el script' > /home/pi/log/logs.txt && source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py >> /home/pi/log/logs.txt 2>&1"
 WorkingDirectory=/home/pi/
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
-StandardOutput=append:/home/pi/log/startup_log.txt
-StandardError=append:/home/pi/log/startup_log.txt
+StandardOutput=append:/home/pi/log/logs.txt
+StandardError=append:/home/pi/log/logs.txt
 Restart=always
 RestartSec=1
 
@@ -139,23 +133,4 @@ sudo systemctl stop game.service
 sudo systemctl disabled game.service
 ```
 
-```bash
-mkdir -p ~/.config/autostart
-nano ~/.config/autostart/myscript.desktop
-
-
-[Desktop Entry]
-Type=Application
-Name=startgamebash
-Exec=/bin/bash -c "echo 'Iniciando el script' > /home/pi/log/startup_log.txt && source /home/pi/env/bin/activate && python /home/pi/env/src/game/main.py >> /home/pi/log/startup_log.txt 2>&1"
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-```
-
-```bash
-
-chmod +x /home/pi/env/src/game/main.py
-sudo nano /etc/xdg/lxsession/LXDE-pi/autostart
-```
 configuara el kivi init
