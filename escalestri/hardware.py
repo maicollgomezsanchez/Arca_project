@@ -11,17 +11,21 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # pines de entrada # header numeracion fisica
+PIN_GPIO_4 = 4 # 7
 PIN_EMERGENCY = 17  # 11
 PIN_SENSOR = 27  # 13
+PIN_GPIO_22 = 22 # 15
 # pines remotos
-PIN_REMOTO_MARCHA = 18  # 12
-PIN_REMOTO_PARO = 23  # 16
-PIN_REMOTO_PAUSA = 24  # 18
-PIN_REMOTO_BOCINA = 25  # 22
+PIN_REMOTO_MARCHA = 5  # 29
+PIN_REMOTO_PARO = 6  # 31
+PIN_REMOTO_PAUSA = 13  # 33
+PIN_REMOTO_BOCINA = 26  # 37
 # pines de salida
-PIN_MARCHA = 5  # 29
-PIN_BOCINA = 6  # 31
-PIN_MONEDA = 13  # 33
+PIN_MARCHA = 18  # 12
+PIN_BOCINA = 23  # 16
+PIN_MONEDA = 24  # 18
+PIN_GPIO_25 = 25 # 22
+PIN_GPIO_12 = 12 # 32
 # configuraciones
 TIEMPO_SIRENA = 2
 TIEMPO_1_SEC = 1
