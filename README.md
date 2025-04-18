@@ -82,21 +82,21 @@ sudo nano /etc/systemd/system/game.service
 
 [Unit]
 Description=Game_App
-After=pigpiod.service multi-user.target 
+After=pigpiod.service multi-user.target
 Wants=graphical.target
 Requires=pigpiod.service
 
 [Service]
 User=pi
 ExecStart=/home/pi/env/src/game/dist/main
-#ExecStart=/bin/bash -c "/home/pi/env/src/game/dist/main >> /home/pi/log/logs.txt 2>&1"
 WorkingDirectory=/home/pi/
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
-StandardOutput=append:/home/pi/log/logs.txt
-StandardError=append:/home/pi/log/logs.txt
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+StandardOutput=file:/home/pi/log/logs.txt
+StandardError=file:/home/pi/log/logs.txt
 Restart=always
-RestartSec=1
+RestartSec=0
 
 [Install]
 WantedBy=graphical.target
@@ -116,17 +116,13 @@ cat /home/pi/log/logs.txt
 ```
 
 ## crear ejecutable
-iniciar el entorno virtual
+iniciar el entorno virtual, pararse en la carpeta del main
 
 ```bash
-   pyinstaller --onefile  --windowed --add-data="game.kv:." --add-data="hardware.py:." main.py
+   pyinstaller --onefile  --windowed --add-data="game.kv:." --add-data="hardware.py:." --distpath ./dist main.py
    or 
-   pyinstaller main.spec
-```
-luego mover el ejecutable a:
+   pyinstaller --distpath ./dist main.spec
 
-```bash
-cd /home/pi/env/src/game/dist/
 ```
 
 ## calibrando el tactil
