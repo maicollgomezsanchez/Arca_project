@@ -1,0 +1,29 @@
+# Archivos y carpetas de configuración de Visual Studio Code
+.vscode/
+
+# Dependencias de Node.js (si usas JavaScript/TypeScript)
+node_modules/
+
+# Archivos de entorno
+.env
+.env.*
+
+# Archivos de logs
+logs/
+*.log
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Salidas de compilación comunes
+dist/
+build/
+out/
+
+# Archivos temporales de editores
+*.swp
+*.swo
+
+# Archivos de configuración personales
+*.code-workspace
