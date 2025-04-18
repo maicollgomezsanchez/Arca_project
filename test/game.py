@@ -1,6 +1,6 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.uix.accordion import NumericProperty
+from kivy.properties import NumericProperty
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -43,32 +43,34 @@ class Popup_banner(Popup):
 
 
 class viewMain(Widget):
-    main_mode = None
-    current_state = None
     laps = NumericProperty(0)
     backup_laps = NumericProperty(0)
-    init_counter = False
-    sensor_pressed = False
-    sound_claxon = False
-    popup = None
-    popup_enabled = False
-    widget_buzzer = False
-    continuous_event = None
-
-    buttons_name = [
-        "start_button",
-        "pause_button",
-        "stop_button",
-        "manual_button",
-        "auto_button",
-        "bocina_button",
-        "mayor_button",
-        "minus_button",
-    ]
+  
+    def init_vars (self):
+        self.main_mode = None
+        self.current_state = None
+        self.init_counter = False
+        self.sensor_pressed = False
+        self.sound_claxon = False
+        self.popup = None
+        self.popup_enabled = False
+        self.widget_buzzer = False
+        self.continuous_event = None
+        self.buttons_name = [
+            "start_button",
+            "pause_button",
+            "stop_button",
+            "manual_button",
+            "auto_button",
+            "bocina_button",
+            "mayor_button",
+            "minus_button",
+        ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.running = True
+        self.init_vars()
         self.init_hmi_buts()
         self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
         self.thread_claxon.start()
