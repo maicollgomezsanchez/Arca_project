@@ -5,8 +5,7 @@
 node_modules/
 
 # Archivos de entorno
-.env
-.env.*
+env/
 
 # Archivos de logs
 logs/
