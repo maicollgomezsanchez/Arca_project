@@ -92,3 +92,4 @@ def close_all_pins():
     input_remote_paro.close()
     input_remote_pausa.close()
     input_remote_bocina.close()
+    log.info("close all pins")
