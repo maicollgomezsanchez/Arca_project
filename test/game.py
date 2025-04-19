@@ -1,12 +1,16 @@
-from kivy.app import App
-from kivy.uix.widget import Widget
-from kivy.properties import NumericProperty
-from kivy.uix.popup import Popup
-from kivy.clock import Clock
-from kivy.core.window import Window
+from kivy.app import App # type: ignore
+from kivy.uix.widget import Widget # type: ignore
+from kivy.properties import NumericProperty # type: ignore
+from kivy.uix.popup import Popup # type: ignore
+from kivy.clock import Clock # type: ignore
+from kivy.core.window import Window # type: ignore
 from functools import partial
 import time, threading
 import logging
+
+from kivy.lang import Builder
+
+Builder.load_file('game.kv')
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -16,6 +20,7 @@ log = logging.getLogger(__name__)
 
 MAX_LAPS = 50
 TIEMPO_SIRENA = 2
+
 
 START, STOP, PAUSE, MANUAL, AUTO, SEMI = (
     "START",
@@ -32,6 +37,7 @@ def window_setup():
     Window.fullscreen = False
     Window.show_cursor = True
     Window.release_all_keyboards()
+    
 
 
 class Popup_banner(Popup):
