@@ -1,3 +1,4 @@
+from kivy.lang import Builder
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty
@@ -25,7 +26,6 @@ from hardware import (
     MANUAL,
     close_all_pins,
 )
-
 
 def window_setup():
     Window.borderless = True
@@ -380,6 +380,7 @@ class gameApp(App):
 
 if __name__ == "__main__":
     try:
+        Builder.load_file('game.kv')
         gameApp().run()
     except Exception as e:
         log.error(f"error de excepcion {e}")

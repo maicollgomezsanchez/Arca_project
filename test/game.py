@@ -1,3 +1,4 @@
+from kivy.lang import Builder
 from kivy.app import App # type: ignore
 from kivy.uix.widget import Widget # type: ignore
 from kivy.properties import NumericProperty # type: ignore
@@ -7,10 +8,6 @@ from kivy.core.window import Window # type: ignore
 from functools import partial
 import time, threading
 import logging
-
-from kivy.lang import Builder
-
-Builder.load_file('game.kv')
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -354,6 +351,7 @@ class gameApp(App):
 
 if __name__ == "__main__":
     try:
+        Builder.load_file('game.kv')
         gameApp().run()
     except Exception as e:
         log.error(f"error de excepcion {e}")
