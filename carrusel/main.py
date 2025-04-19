@@ -9,6 +9,8 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from functools import partial
 import logging, time, threading
+from kivy.lang import Builder
+Builder.load_file('game.kv')
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

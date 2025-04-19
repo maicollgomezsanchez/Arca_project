@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('game.kv', 'game.kv'), ('hardware.py', 'hardware.py')],
+    datas=[('game.kv', '.'), ('hardware.py', '.')],
     hiddenimports=[
     'gpiozero',
     'gpiozero.pins.rpigpio',

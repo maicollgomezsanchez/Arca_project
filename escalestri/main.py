@@ -32,7 +32,6 @@ def window_setup():
     Window.fullscreen = True
     Window.show_cursor = False
     Window.release_all_keyboards()
-    close_all_pins()
 
 
 class Popup_banner(Popup):
@@ -73,7 +72,7 @@ class viewMain(Widget):
         self.running = True
         self.init_vars()
         self.init_hmi_buts()
-        # self.output_bocina = output_bocina
+        self.output_bocina = output_bocina
         self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
         self.thread_claxon.start()
         # funciones de botones externos
@@ -110,11 +109,11 @@ class viewMain(Widget):
 
     # funciones de botones externos
     def on_buzzer(self):
-        output_bocina.on()
+        self.output_bocina.on()
         log.info("bocina on!")
 
     def off_buzzer(self):
-        output_bocina.off()
+        self.output_bocina.on()
         log.info("bocina off!")
 
     def on_sensor(self):

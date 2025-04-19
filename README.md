@@ -82,7 +82,7 @@ sudo nano /etc/systemd/system/game.service
 
 [Unit]
 Description=Game_App
-After=pigpiod.service multi-user.target
+After=pigpiod.service multi-user.target graphical.target
 Wants=graphical.target
 Requires=pigpiod.service
 
@@ -93,10 +93,11 @@ WorkingDirectory=/home/pi/
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+Environment=XAUTHORITY=/home/pi/.Xauthority
 StandardOutput=file:/home/pi/log/logs.txt
 StandardError=file:/home/pi/log/logs.txt
 Restart=always
-RestartSec=0
+RestartSec=1
 
 [Install]
 WantedBy=graphical.target
