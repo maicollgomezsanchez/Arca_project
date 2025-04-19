@@ -32,6 +32,7 @@ def window_setup():
     Window.fullscreen = True
     Window.show_cursor = False
     Window.release_all_keyboards()
+    close_all_pins()
 
 
 class Popup_banner(Popup):
@@ -371,12 +372,11 @@ class viewMain(Widget):
 class gameApp(App):
     def build(self):
         window_setup()
-        return viewMain()
+        self.app_widget = viewMain()
+        return self.app_widget
 
     def on_stop(self):
-        # Llamar a deinit() explícitamente
-        app_widget = self.root
-        app_widget.deinit()
+        self.app_widget.deinit()
 
 
 if __name__ == "__main__":
@@ -384,3 +384,8 @@ if __name__ == "__main__":
         gameApp().run()
     except Exception as e:
         log.error(f"error de excepcion {e}")
+    except KeyboardInterrupt:
+        log.error("keyboard exit")
+    finally:
+        close_all_pins()
+

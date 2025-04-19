@@ -119,9 +119,9 @@ cat /home/pi/log/logs.txt
 iniciar el entorno virtual, pararse en la carpeta del main
 
 ```bash
-   pyinstaller --onefile  --windowed --add-data="game.kv:." --add-data="hardware.py:." --distpath ./dist main.py
+   pyinstaller --onefile  --windowed --add-data="game.kv:." --add-data="hardware.py:." game.py
    or 
-   pyinstaller --distpath ./dist main.spec
+   pyinstaller main.spec
 
 ```
 
