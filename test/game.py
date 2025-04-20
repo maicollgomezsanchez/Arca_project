@@ -1,7 +1,7 @@
 from kivy.lang import Builder
 from kivy.app import App # type: ignore
 from kivy.uix.widget import Widget # type: ignore
-from kivy.properties import NumericProperty # type: ignore
+from kivy.properties import NumericProperty, StringProperty # type: ignore
 from kivy.uix.popup import Popup # type: ignore
 from kivy.clock import Clock # type: ignore
 from kivy.core.window import Window # type: ignore
@@ -46,11 +46,12 @@ class Popup_banner(Popup):
 
 
 class viewMain(Widget):
+    label_txt_viaje = StringProperty('VUELTAS\n')
     laps = NumericProperty(0)
     backup_laps = NumericProperty(0)
+    main_mode = None
   
     def init_vars (self):
-        self.main_mode = None
         self.current_state = None
         self.init_counter = False
         self.sensor_pressed = False
@@ -221,7 +222,7 @@ class viewMain(Widget):
                         self.mode_press(AUTO, btn)
                         return super().on_touch_down(touch)
                 
-                if self.current_state is STOP:
+                if self.current_state is STOP and self.main_mode is AUTO:
                     if widget_id in ("mayor_button", "minus_button"):
                         self.on_button_press(widget_id)
                         return super().on_touch_down(touch)
@@ -254,7 +255,7 @@ class viewMain(Widget):
 
     def on_button_press(self, button):
         self.continuous_event = None
-        if self.current_state == STOP:
+        if self.current_state == STOP and self.main_mode == AUTO:
             self.continuous_event = Clock.schedule_interval(
                 partial(self.set_timers, button), 0.1
             )
@@ -263,6 +264,9 @@ class viewMain(Widget):
         self.backup_laps = self.laps
         self.main_mode = mode
         log.info(f"main_mode: {self.main_mode}")
+        self.label_txt_viaje = "VUELTAS\n"
+        if self.main_mode == MANUAL:
+            self.label_txt_viaje = "MODO MANUAL\n"
         self.pause_button.disabled = True
         self.start_button.disabled = True
         self.current_state = None
