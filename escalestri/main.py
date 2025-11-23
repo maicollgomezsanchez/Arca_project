@@ -1,4 +1,3 @@
-from kivy.lang import Builder
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty
@@ -65,6 +64,8 @@ class viewMain(Widget):
             "bocina_button",
             "mayor_button",
             "minus_button",
+            "mi_label",
+            "mi_txt",
         ]
 
     def __init__(self, **kwargs):
@@ -199,10 +200,7 @@ class viewMain(Widget):
     def init_hmi_buts(self):
         for ids in self.buttons_name:
             setattr(self, ids, self.ids[ids])
-        self.start_button.disabled = True
-        self.pause_button.disabled = True
-
-        self.buttons = [self.manual_button, self.auto_button, self.start_button]
+        self.buttons = [self.manual_button, self.auto_button, self.start_button, self.pause_button]
         self.modes = {
             AUTO: self.auto_button,
             MANUAL: self.manual_button,
@@ -279,7 +277,7 @@ class viewMain(Widget):
 
     def on_button_press(self, button):
         self.continuous_event = None
-        if self.current_state == STOP:
+        if self.current_state == STOP and self.main_mode == AUTO:
             self.continuous_event = Clock.schedule_interval(
                 partial(self.set_timers, button), 0.1
             )
@@ -287,13 +285,12 @@ class viewMain(Widget):
     def mode_press(self, mode_select, mode_state):
         self.backup_laps = self.laps
         self.main_mode = mode_select
-        self.pause_button.disabled = True
-        self.start_button.disabled = True
         self.current_state = None
         log.info(f"main_mode: {self.main_mode}")
         if mode_state != "down":
             self.current_state = STOP
-            self.start_button.disabled = False
+            if self.main_mode == MANUAL:
+                self.laps = 0
 
     def state_press(self, choised_state):
         if self.current_state is None:
@@ -311,10 +308,11 @@ class viewMain(Widget):
             return
 
     def _pause_event(self):
+        self.mi_label.color = ('#ff8000')
+        self.mi_txt.color = self.mi_label.color
         # animicacion de botones HMI pausa
         self.start_button.disabled = False
         self.pause_button.disabled = True
-        self.pause_button.state = "normal"
         log.info("Pausar evento")
         self.current_state = PAUSE
         self.init_counter = False
@@ -322,11 +320,12 @@ class viewMain(Widget):
 
     def _start_event(self):
         # animacion de botones hmi
+        self.mi_label.color = ("#00aa00")
+        self.mi_txt.color = self.mi_label.color
         self.manual_button.disabled = True
         self.auto_button.disabled = True
-        self.pause_button.disabled = False
         self.start_button.disabled = True
-        self.start_button.state = "normal"
+        self.pause_button.disabled = False
         log.info(
             "Iniciar evento" if self.current_state == STOP else "Re-iniciar evento"
         )
@@ -346,6 +345,8 @@ class viewMain(Widget):
         if self.main_mode is None:
             return
         # off conteo
+        self.mi_label.color = (0,0,0,1)
+        self.mi_txt.color = self.mi_label.color
         log.info("-------------")
         if self.init_counter:
             self.init_counter = False
@@ -360,8 +361,6 @@ class viewMain(Widget):
         "animacion de los botones default"
         for button in self.buttons:
             button.disabled = False
-        self.start_button.state = "normal"
-        self.pause_button.disabled = True
         for mode, button in self.modes.items():
             button.state = "down" if self.main_mode == mode else "normal"
         log.info(f"limpiando en modo {self.main_mode}")
@@ -380,7 +379,6 @@ class gameApp(App):
 
 if __name__ == "__main__":
     try:
-        Builder.load_file('game.kv')
         gameApp().run()
     except Exception as e:
         log.error(f"error de excepcion {e}")

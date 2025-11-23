@@ -39,7 +39,7 @@ Para ejecutar este proyecto, necesitas tener instaladas las siguientes dependenc
 
 ```bash
 sudo raspi-config:
-   interface_options: VNC/enable
+   interface_options: VNC/enable (k0)
 sudo apt-get update
 sudo apt-get upgrade
 ```
@@ -94,8 +94,6 @@ Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 Environment=XAUTHORITY=/home/pi/.Xauthority
-StandardOutput=file:/home/pi/log/logs.txt
-StandardError=file:/home/pi/log/logs.txt
 Restart=always
 RestartSec=1
 
@@ -113,7 +111,6 @@ journalctl -u game.service --no-pager --lines=50
 sudo systemctl status game.service
 sudo systemctl stop game.service
 sudo systemctl disabled game.service
-cat /home/pi/log/logs.txt
 ```
 
 ## crear ejecutable

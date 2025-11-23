@@ -45,8 +45,9 @@ START, STOP, PAUSE, MANUAL, AUTO, SEMI = (
 
 def check_pin_free(pin):
     try:
-        test_led = LED(pin)
+        test_led = Button(pin)
         test_led.close()
+        log.info(f"Pin:{pin} revisado")
         return True
     except Exception as e:
         log.error(f"Error al acceder al pin {pin}: {e}")
@@ -68,12 +69,14 @@ if not all(
 ):
     log.error("error in pins selected")
     raise SystemError
-# configuracion de pines
+# configuracion de pines salida
 output_bocina = LED(PIN_BOCINA, initial_value=False)
 output_marcha = LED(PIN_MARCHA, initial_value=False)
 output_moneda = LED(PIN_MONEDA, initial_value=False)
+# configuracion de pines entrada
 input_emergency = Button(PIN_EMERGENCY, pull_up=True, bounce_time=BOUNCE_TIME)
 input_sensor = Button(PIN_SENSOR, pull_up=True, bounce_time=TIEMPO_SENSOR)
+# configuracion de pines remotos
 input_remote_marcha = Button(PIN_REMOTO_MARCHA, pull_up=True, bounce_time=BOUNCE_TIME)
 input_remote_paro = Button(PIN_REMOTO_PARO, pull_up=True, bounce_time=BOUNCE_TIME)
 input_remote_pausa = Button(PIN_REMOTO_PAUSA, pull_up=True, bounce_time=BOUNCE_TIME)
