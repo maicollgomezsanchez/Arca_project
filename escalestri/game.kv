@@ -4,17 +4,24 @@
 
 ############ CONSTANTES #########
 #:set radius_default 25
-#:set color_fondo_pantalla '#cee5e5'
+#:set color_fondo_pantalla '#707070'
 #:set color_btn_press '#aeaeae'
 #:set color_btn_normal '#90a4a4'
-#:set color_stop '#ff2222'
-#:set color_start '#1fc408'
-#:set color_pause '#ff8022'
-#:set color_modos '#fffa59'
 #:set color_btn_special '#5886ac'
-#:set color_bocina '#5886ac'
+# colores botones
+#:set color_stop_press  '#d60000'
+#:set color_stop '#880000'
+#:set color_start_press '#006600'
+#:set color_start '#009900'
+#:set color_pause_press '#cc6600'
+#:set color_pause '#ff8000'
+#:set color_modos_press '#000066'
+#:set color_modos "#0000cc"
+#:set color_bocina_press '#000066'
+#:set color_bocina "#0000cc"
+
 #:set color_popup '#887700'
-#:set label_txt_viaje 'VUELTAS\n'
+#:set label_txt_viaje '\n\n\nVUELTAS\n'
 #:set label_txt_parada 'ESPERA\n'
 #:set title_popup ''
 #:set label_start 'MARCHA'
@@ -24,16 +31,18 @@
 #:set STOP "STOP"
 #:set PAUSE "PAUSE"
 
+
 # Estilo para los layouts
 <BoxLayout>:
     spacing: 20
 <Label>:
     halign: 'center'
-    font_size: 40
+    font_size: 60
     valign: 'middle'
+    
 
 <Button>:
-    font_size: 28
+    font_size: 40
     color: utils.get_color_from_hex('#000000')
     disabled_color: utils.get_color_from_hex('#111111')
     background_color: (0, 0, 0, 0)
@@ -79,55 +88,70 @@
         # Primera fila
         BoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.3
+            size_hint_y: 0.33
             # Boton Manual
             BoxLayout:
-                ToggleButton:
-                    id: manual_button
-                    text: 'MANUAL'
-                    group: 'mode'
-                    canvas.before:
-                        Color:
-                            rgba: utils.get_color_from_hex(color_modos) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
-                        RoundedRectangle:
-                            size: self.size
-                            pos: self.pos
-                            radius: [radius_default]
+                orientation: 'vertical'
+                #size_hint_y: 1
+                BoxLayout:
+                    padding : [10,10,10,10]
+                    ToggleButton:
+                        id: manual_button
+                        text: 'MANUAL'
+                        group: 'mode'
+                        canvas.before:
+                            Color:
+                                rgba: utils.get_color_from_hex(color_modos_press) if self.state == 'down' else utils.get_color_from_hex(color_modos)
+                            RoundedRectangle:
+                                size: self.size
+                                pos: self.pos
+                                radius: [radius_default]
+
+            #texto
             BoxLayout:
+                orientation: 'vertical'
+                #size_hint_y: 1
+                Label:
+                    id: mi_txt
+                    color: (0,0,0,1)
+                    text: label_txt_viaje + str(root.laps)
+
             # Boton Auto
             BoxLayout:
-                ToggleButton:
-                    id: auto_button
-                    text: 'AUTO'
-                    group: 'mode'
-                    canvas.before:
-                        Color:
-                            rgba: utils.get_color_from_hex(color_modos) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
-                        RoundedRectangle:
-                            size: self.size
-                            pos: self.pos
-                            radius: [radius_default]
+                orientation: 'vertical'
+                #size_hint_y: 1
+                BoxLayout:
+                    padding : [10,10,10,10]
+                    ToggleButton:
+                        id: auto_button
+                        text: 'AUTO'
+                        group: 'mode'
+                        canvas.before:
+                            Color:
+                                rgba: utils.get_color_from_hex(color_modos_press) if self.state == 'down' else utils.get_color_from_hex(color_modos)
+                            RoundedRectangle:
+                                size: self.size
+                                pos: self.pos
+                                radius: [radius_default]
 
         # Segunda fila
         BoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.4
+            size_hint_y: 0.33
             BoxLayout:
             # Columna vistas
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_y: 1
-                #label de vueltas
+                #size_hint_y: 1
                 Label:
-                    color: (0, 0, 0, 1)
-                    text: label_txt_viaje + str(root.laps)
-                    height: self.parent.height * 0.6
+                    id: mi_label
+                    height: self.parent.height * 0.1
                 # Boton de cambio + tiempo de viaje
                 BoxLayout:
                     orientation: 'horizontal'
-                    size_hint_y: None
-                    height: self.parent.height * 0.2
-                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
+                    #size_hint_y: None
+                    height: self.parent.height * 0.3
+                    padding: [self.width * 0.4 - self.height * 0.4, 0, self.width * 0.4 - self.height * 0.4, 0]
                     Button:
                         id: mayor_button
                         text: "+"
@@ -139,13 +163,14 @@
                             RoundedRectangle:
                                 size: self.size
                                 pos: self.pos
-                                radius: [radius_default]
+                                radius: [20]
+
                 # Boton de cambio - tiempo de viaje
                 BoxLayout:
                     orientation: 'horizontal'
-                    size_hint_y: None
-                    height: self.parent.height * 0.2
-                    padding: [self.width * 0.5 - self.height * 0.5, 0, self.width * 0.5 - self.height * 0.5, 0]
+                    #size_hint_y: None
+                    height: self.parent.height * 0.3
+                    padding: [self.width * 0.4 - self.height * 0.4, 0, self.width * 0.4 - self.height * 0.4, 0]
                     Button:
                         id: minus_button
                         text: "-"
@@ -157,63 +182,75 @@
                             RoundedRectangle:
                                 size: self.size
                                 pos: self.pos
-                                radius: [radius_default]
+                                radius: [20]
             # Columna botones especiales
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_y: 1
-                BoxLayout:
-                    size_hint_y: 0.1
+                #size_hint_y: 1
                 # Boton bocina
+                padding : [10,10,10,10]
                 Button:
                     id: bocina_button
                     text: "BOCINA"
                     height: self.parent.height * 0.6
                     canvas.before:
                         Color:
-                            rgba: utils.get_color_from_hex(color_bocina) if self.state == 'down' else utils.get_color_from_hex(color_btn_press)
+                            rgba: utils.get_color_from_hex(color_bocina_press) if self.state == 'down' else utils.get_color_from_hex(color_bocina)
                         RoundedRectangle:
                             size: self.size
                             pos: self.pos
                             radius: [30]
-                BoxLayout:
-                    size_hint_y: 0.1
         # Tercera fila
         BoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.3
+            size_hint_y: 0.33
             # Boton Start
-            ToggleButton:
-                id: start_button
-                text: label_start
-                group: 'state'
-                canvas.before:
-                    Color:
-                        rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_start)
-                    RoundedRectangle:
-                        size: self.size
-                        pos: self.pos
-                        radius: [30]
+            BoxLayout:
+                orientation: 'vertical'
+                #size_hint_y: 1
+                padding : [10,10,10,10]
+                ToggleButton:
+                    id: start_button
+                    text: label_start
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(color_start_press) if self.disabled else utils.get_color_from_hex(color_start)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [30]
+                
+
             # Boton pause
-            ToggleButton:
-                id: pause_button
-                text: label_pause
-                group: 'state'
-                canvas.before:
-                    Color:
-                        rgba: utils.get_color_from_hex(color_btn_press) if self.disabled else utils.get_color_from_hex(color_pause)
-                    RoundedRectangle:
-                        size: self.size
-                        pos: self.pos
-                        radius: [30]
+            BoxLayout:
+                orientation: 'vertical'
+                #size_hint_y: 1
+                padding : [10,10,10,10]
+                ToggleButton:
+                    id: pause_button
+                    text: label_pause
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(color_pause_press) if self.disabled else utils.get_color_from_hex(color_pause)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [30]
+                
+
             # Boton stop
-            Button:
-                id: stop_button
-                text: label_stop
-                canvas.before:
-                    Color:
-                        rgba: utils.get_color_from_hex(color_stop) if self.state == 'normal' else utils.get_color_from_hex(color_btn_press)
-                    RoundedRectangle:
-                        size: self.size
-                        pos: self.pos
-                        radius: [30]
+            BoxLayout:
+                orientation: 'vertical'
+                #size_hint_y: 1
+                padding : [10,10,10,10]
+                Button:
+                    id: stop_button
+                    text: label_stop
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(color_stop_press) if self.state == 'normal' else utils.get_color_from_hex(color_stop)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [30]
+                
