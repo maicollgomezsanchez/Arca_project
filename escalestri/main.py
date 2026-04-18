@@ -6,25 +6,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from functools import partial
 import time, threading
-from hardware import (
-    log,
-    input_emergency,
-    input_sensor,
-    input_remote_paro,
-    input_remote_bocina,
-    input_remote_marcha,
-    input_remote_pausa,
-    output_marcha,
-    output_bocina,
-    TIEMPO_SIRENA,
-    MAX_LAPS,
-    START,
-    STOP,
-    PAUSE,
-    AUTO,
-    MANUAL,
-    close_all_pins,
-)
+import hardware
 
 def window_setup():
     Window.borderless = True
@@ -73,49 +55,51 @@ class viewMain(Widget):
         self.running = True
         self.init_vars()
         self.init_hmi_buts()
-        self.output_bocina = output_bocina
+        self.output_bocina = hardware.output_bocina
         self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
         self.thread_claxon.start()
         # funciones de botones externos
-        input_sensor.when_released = self.off_sensor
-        input_sensor.when_pressed = self.on_sensor
+        hardware.input_sensor.when_released = self.off_sensor
+        hardware.input_sensor.when_pressed = self.on_sensor
 
-        input_emergency.when_pressed = self.close_popup
-        input_emergency.when_released = self.show_popup
+        hardware.input_emergency.when_pressed = self.close_popup
+        hardware.input_emergency.when_released = self.show_popup
 
         # inicia funciones de botones remotos
-        input_remote_bocina.when_pressed = self.on_buzzer
-        input_remote_bocina.when_released = self.off_buzzer
+        hardware.input_remote_bocina.when_pressed = self.on_buzzer
+        hardware.input_remote_bocina.when_released = self.off_buzzer
 
-        input_remote_marcha.when_pressed = lambda: Clock.schedule_once(
+        hardware.input_remote_marcha.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_marcha(), 0
         )
-        input_remote_pausa.when_pressed = lambda: Clock.schedule_once(
+        hardware.input_remote_pausa.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_pausa(), 0
         )
-        input_remote_paro.when_pressed = lambda: Clock.schedule_once(
+        hardware.input_remote_paro.when_pressed = lambda: Clock.schedule_once(
             lambda dt: self._remote_paro(), 0
         )
+        hardware.output_luces.on()
+        hardware.log.info("luces on!")
 
     def deinit(self):
         self.running = False
         try:
             self.thread_claxon.join()
-            log.info("Hilos detenidos correctamente")
+            hardware.log.info("Hilos detenidos correctamente")
         except Exception as e:
-            log.error(f"Error al detener los hilos: {e}")
+            hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
-            close_all_pins()
-            log.info("Pines cerrados correctamente")
+            hardware.close_all_pins()
+            hardware.log.info("Pines cerrados correctamente")
 
     # funciones de botones externos
     def on_buzzer(self):
         self.output_bocina.on()
-        log.info("bocina on!")
+        hardware.log.info("bocina on!")
 
     def off_buzzer(self):
-        self.output_bocina.on()
-        log.info("bocina off!")
+        self.output_bocina.off()
+        hardware.log.info("bocina off!")
 
     def on_sensor(self):
         if not self.sensor_pressed:
@@ -124,15 +108,15 @@ class viewMain(Widget):
             if not self.init_counter:
                 return
             # cambia la variable cuando presiona el boton
-            mode_delta = {MANUAL: 1, AUTO: -1}
+            mode_delta = {hardware.MANUAL: 1, hardware.AUTO: -1}
             delta = mode_delta.get(self.main_mode, 0)
 
             if delta != 0:
                 self.laps = max(0, self.laps + delta)
-                log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
+                hardware.log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
             # cerrar si llega a limites
-            limit_manual = self.main_mode == MANUAL and self.laps == MAX_LAPS
-            limit_auto = self.main_mode == AUTO and self.laps == 0
+            limit_manual = self.main_mode == hardware.MANUAL and self.laps == hardware.MAXIMAS_VUELTAS
+            limit_auto = self.main_mode == hardware.AUTO and self.laps == 0
 
             if limit_auto or limit_manual:
                 self.clean_all()
@@ -142,16 +126,16 @@ class viewMain(Widget):
             self.sensor_pressed = False
 
     def _remote_marcha(self):
-        log.warning("marcha por remoto")
-        self.state_press(START)
+        hardware.log.warning("marcha por remoto")
+        self.state_press(hardware.START)
 
     def _remote_paro(self):
-        log.warning("paro por remoto")
-        self.state_press(STOP)
+        hardware.log.warning("paro por remoto")
+        self.state_press(hardware.STOP)
 
     def _remote_pausa(self):
-        log.warning("pausa por remoto")
-        self.state_press(PAUSE)
+        hardware.log.warning("pausa por remoto")
+        self.state_press(hardware.PAUSE)
 
     # funciones de  pop up
     def show_popup(self):
@@ -160,13 +144,13 @@ class viewMain(Widget):
             self.init_counter = False
             self.off_buzzer()
             self.clean_all()
-            log.info("SIRENA EMERGENCIA !!!")
+            hardware.log.info("SIRENA EMERGENCIA !!!")
             Clock.schedule_once(self._open_popup, 0)
 
     def close_popup(self):
         if self.popup_enabled:
             self.popup_enabled = False
-            self.current_state = STOP
+            self.current_state = hardware.STOP
             Clock.schedule_once(self._dismiss_popup, 0)
 
     def _open_popup(self, dt):
@@ -181,19 +165,19 @@ class viewMain(Widget):
             self.popup = None
 
     def claxon_thread(self):
-        log.info("iniciando hilo de sirena")
+        hardware.log.info("iniciando hilo de sirena")
         while self.running:
             time.sleep(0.1)
             try:
                 if self.sound_claxon:
-                    self.sound_claxon = False
                     self.on_buzzer()
-                    log.info("sonando Bocina !!!")
-                    time.sleep(TIEMPO_SIRENA)
+                    hardware.log.info("sonando Bocina !!!")
+                    time.sleep(hardware.TIEMPO_DURACION_SIRENA)
                     self.off_buzzer()
+                    self.sound_claxon = False
 
             except Exception as e:
-                log.error(f"Error en claxon_thread: {e}")
+                hardware.log.error(f"Error en claxon_thread: {e}")
                 self.off_buzzer()
 
     # funciones HMI
@@ -202,8 +186,8 @@ class viewMain(Widget):
             setattr(self, ids, self.ids[ids])
         self.buttons = [self.manual_button, self.auto_button, self.start_button, self.pause_button]
         self.modes = {
-            AUTO: self.auto_button,
-            MANUAL: self.manual_button,
+            hardware.AUTO: self.auto_button,
+            hardware.MANUAL: self.manual_button,
         }
 
     def on_touch_move(self, touch):
@@ -219,10 +203,10 @@ class viewMain(Widget):
             self.widget_buzzer = False
             self.off_buzzer()
 
-        if self.current_state == STOP and self.continuous_event:
+        if self.current_state == hardware.STOP and self.continuous_event:
             self.continuous_event.cancel()
             self.backup_laps = self.laps
-            log.info(f"vueltas definidas: {self.laps}")
+            hardware.log.info(f"vueltas definidas: {self.laps}")
 
         return super().on_touch_up(touch)
 
@@ -238,31 +222,31 @@ class viewMain(Widget):
                     return super().on_touch_down(touch)
 
                 if widget_id == "stop_button":
-                    self.state_press(STOP)
+                    self.state_press(hardware.STOP)
                     return super().on_touch_down(touch)
 
-                if self.current_state in (STOP, None):
-                    if widget_id == "manual_button" and self.main_mode is not MANUAL:
-                        self.mode_press(MANUAL, btn)
+                if self.current_state in (hardware.STOP, None):
+                    if widget_id == "manual_button" and self.main_mode is not hardware.MANUAL:
+                        self.mode_press(hardware.MANUAL, btn)
                         return super().on_touch_down(touch)
 
-                    if widget_id == "auto_button" and self.main_mode is not AUTO:
-                        self.mode_press(AUTO, btn)
+                    if widget_id == "auto_button" and self.main_mode is not hardware.AUTO:
+                        self.mode_press(hardware.AUTO, btn)
                         return super().on_touch_down(touch)
 
-                if self.current_state is STOP:
+                if self.current_state is hardware.STOP:
                     if widget_id in ("mayor_button", "minus_button"):
                         self.on_button_press(widget_id)
                         return super().on_touch_down(touch)
 
-                if self.current_state in (STOP, PAUSE):
+                if self.current_state in (hardware.STOP, hardware.PAUSE):
                     if widget_id == "start_button":
-                        self.state_press(START)
+                        self.state_press(hardware.START)
                         return super().on_touch_down(touch)
 
-                if self.current_state is START:
+                if self.current_state is hardware.START:
                     if widget_id == "pause_button":
-                        self.state_press(PAUSE)
+                        self.state_press(hardware.PAUSE)
                         return super().on_touch_down(touch)
         return False
 
@@ -273,11 +257,11 @@ class viewMain(Widget):
         }
         if id_button in timers:
             increment = timers[id_button]
-            self.laps = max(0, min(MAX_LAPS, self.laps + increment))
+            self.laps = max(0, min(hardware.MAXIMAS_VUELTAS, self.laps + increment))
 
     def on_button_press(self, button):
         self.continuous_event = None
-        if self.current_state == STOP and self.main_mode == AUTO:
+        if self.current_state == hardware.STOP and self.main_mode == hardware.AUTO:
             self.continuous_event = Clock.schedule_interval(
                 partial(self.set_timers, button), 0.1
             )
@@ -286,23 +270,23 @@ class viewMain(Widget):
         self.backup_laps = self.laps
         self.main_mode = mode_select
         self.current_state = None
-        log.info(f"main_mode: {self.main_mode}")
+        hardware.log.info(f"main_mode: {self.main_mode}")
         if mode_state != "down":
-            self.current_state = STOP
-            if self.main_mode == MANUAL:
+            self.current_state = hardware.STOP
+            if self.main_mode == hardware.MANUAL:
                 self.laps = 0
 
     def state_press(self, choised_state):
         if self.current_state is None:
             return
-        if choised_state == STOP:
+        if choised_state == hardware.STOP:
             self.clean_all()
             return
-        elif choised_state == PAUSE:
+        elif choised_state == hardware.PAUSE:
             self._pause_event()
             return
-        elif choised_state == START:
-            if self.main_mode == AUTO and self.laps == 0:
+        elif choised_state == hardware.START:
+            if self.main_mode == hardware.AUTO and self.laps == 0:
                 return
             self._start_event()
             return
@@ -313,10 +297,14 @@ class viewMain(Widget):
         # animicacion de botones HMI pausa
         self.start_button.disabled = False
         self.pause_button.disabled = True
-        log.info("Pausar evento")
-        self.current_state = PAUSE
+        hardware.log.info("En Pausa")
+        self.current_state = hardware.PAUSE
         self.init_counter = False
-        output_marcha.off()
+        hardware.output_marcha.off()
+        hardware.log.info("Marcha Off")
+        time.sleep(hardware.TIEMPO_RETARDO_LUCES)
+        hardware.output_luces.on()
+        hardware.log.info("luces on!!!")
 
     def _start_event(self):
         # animacion de botones hmi
@@ -326,20 +314,27 @@ class viewMain(Widget):
         self.auto_button.disabled = True
         self.start_button.disabled = True
         self.pause_button.disabled = False
-        log.info(
-            "Iniciar evento" if self.current_state == STOP else "Re-iniciar evento"
+        hardware.log.info(
+            "Iniciar evento" if self.current_state == hardware.STOP else "Re-iniciar evento"
         )
-        if self.current_state == STOP:
+        if self.current_state == hardware.STOP:
             # activa sirena de inicio
             self.sound_claxon = True
             # guarda las vueltas seleccionadas
             self.backup_laps = self.laps
             # actualiza la vueltas en la HMI
-            self.laps = self.backup_laps if self.main_mode == AUTO else 0
+            self.laps = self.backup_laps if self.main_mode == hardware.AUTO else 0
+        
+        while self.sound_claxon:
+            time.sleep(hardware.TIEMPO_REBOTE_SENSOR)
 
-        self.current_state = START
+        self.current_state = hardware.START
         self.init_counter = True
-        output_marcha.on()
+        hardware.output_luces.off()
+        hardware.log.info("luces off")
+        time.sleep(hardware.TIEMPO_RETARDO_LUCES)
+        hardware.output_marcha.on()
+        hardware.log.info("Marcha On!!!")
 
     def clean_all(self):
         if self.main_mode is None:
@@ -347,24 +342,27 @@ class viewMain(Widget):
         # off conteo
         self.mi_label.color = (0,0,0,1)
         self.mi_txt.color = self.mi_label.color
-        log.info("-------------")
+        hardware.log.info("-------------")
         if self.init_counter:
             self.init_counter = False
             self.sound_claxon = True
             # sonar sirena fin de juego
-            log.info("FIN de juego")
+            hardware.log.info("FIN de juego")
         # recupero vueltas seleccionadas
         self.laps = self.backup_laps
         # parametros stop default
-        self.current_state = STOP
-        output_marcha.off()
+        self.current_state = hardware.STOP
+        hardware.output_marcha.off()
+        hardware.log.info("Marcha Off")
+        time.sleep(hardware.TIEMPO_RETARDO_LUCES)
+        hardware.output_luces.on()
+        hardware.log.info("luces on!")
         "animacion de los botones default"
         for button in self.buttons:
             button.disabled = False
         for mode, button in self.modes.items():
             button.state = "down" if self.main_mode == mode else "normal"
-        log.info(f"limpiando en modo {self.main_mode}")
-        log.info("-------------")
+        #hardware.log.info(f"limpiando en modo {self.main_mode}")
 
 
 class gameApp(App):
@@ -381,9 +379,9 @@ if __name__ == "__main__":
     try:
         gameApp().run()
     except Exception as e:
-        log.error(f"error de excepcion {e}")
+        hardware.log.error(f"error de excepcion {e}")
     except KeyboardInterrupt:
-        log.error("keyboard exit")
+        hardware.log.error("keyboard exit")
     finally:
-        close_all_pins()
+        hardware.close_all_pins()
 
