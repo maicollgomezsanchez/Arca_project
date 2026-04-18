@@ -66,6 +66,11 @@ if not all(
         check_pin_free(PIN_INPUT_REMOTO_PAUSA),
         check_pin_free(PIN_INPUT_REMOTO_BOCINA),
         check_pin_free(PIN_OUTPUT_TRAGA_MONEDA),
+        #nuevos pines
+        check_pin_free(PIN_OUTPUT_LUCES),
+        check_pin_free(PIN_OUTPUT_GPIO_12),
+        check_pin_free(PIN_INPUT_GPIO_4),
+        check_pin_free(PIN_INPUT_GPIO_22)
     ]
 ):
     log.error("error in pins selected")
