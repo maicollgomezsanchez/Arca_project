@@ -1,15 +1,17 @@
 # Archivos y carpetas de configuración de Visual Studio Code
 .vscode/
+__pycache__/
 
 # Dependencias de Node.js (si usas JavaScript/TypeScript)
 node_modules/
 
 # Archivos de entorno
-env/
+kivy_env/
 
 # Archivos de logs
 logs/
 *.log
+*.txt
 
 # Archivos del sistema operativo
 .DS_Store

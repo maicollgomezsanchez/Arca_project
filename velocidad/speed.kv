@@ -1,0 +1,91 @@
+#:kivy 2.3.0
+
+ScreenManager:
+    MainScreen:
+        name: "main"
+    FileListScreen:
+        name: "file_list"
+    FileViewerScreen:
+        name: "file_viewer"
+
+
+<MainScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: 20
+        spacing: 20
+
+        Label:
+            text: "Velocidad: " + str(root.speed) + " km/h"
+            font_size: 40
+            size_hint_y: 0.2
+
+        Label:
+            text: "Archivo activo: " + root.active_file
+            font_size: 18
+            size_hint_y: 0.1
+
+        Button:
+            id: stop_button
+            text: "Simular pulso"
+            size_hint_y: 0.15
+           # on_release: root.simular_pulso()
+
+        Button:
+            text: "Ver archivos"
+            size_hint_y: 0.15
+            on_release: print("CAMBIANDO A FILE_LIST"); app.root.current = "file_list"
+
+
+<FileListScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: 20
+        spacing: 10
+
+        Label:
+            text: "Archivos disponibles"
+            font_size: 28
+            size_hint_y: 0.1
+
+        ScrollView:
+            size_hint_y: 0.8
+
+            GridLayout:
+                id: file_list
+                cols: 1
+                spacing: 10
+                size_hint_y: None
+                height: self.minimum_height
+
+        Button:
+            text: "Volver"
+            size_hint_y: 0.1
+            on_release: app.root.current = "main"
+
+
+<FileViewerScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: 20
+        spacing: 10
+
+        Label:
+            text: "Contenido del archivo"
+            font_size: 28
+            size_hint_y: 0.1
+
+        ScrollView:
+            size_hint_y: 0.8
+
+            Label:
+                text: root.content
+                font_size: 18
+                text_size: self.width, None
+                size_hint_y: None
+                height: self.texture_size[1]
+
+        Button:
+            text: "Volver"
+            size_hint_y: 0.1
+            on_release: app.root.current = "file_list"
