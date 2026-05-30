@@ -17,3 +17,155 @@ interface:
 
 babylandia y carrusel:
     manejan tiempos tiempo de viaje
+
+
+
+
+#:kivy 2.2.1
+#:import utils kivy.utils
+#:import Factory kivy.factory.Factory
+
+############ CONSTANTES #########
+#:set color_fondo_pantalla '#23272a'
+#:set color_btn_press '#2c2f33'
+#:set color_stop '#ff5555'
+#:set color_popup '#23272a'
+
+#:set color_letras_2 '#eeeeee'
+
+
+#:set label_stop 'SENSOR'
+#:set label_KMPH " Km/h"
+
+# Estilo para los layouts
+<BoxLayout>:
+    spacing: 20
+<Label>:
+    halign: 'center'
+    font_size: 50
+    valign: 'middle'
+    color: utils.get_color_from_hex(color_letras_2)
+
+<Button>:
+    font_size: 28
+    color: utils.get_color_from_hex(color_letras_2)
+    disabled_color: utils.get_color_from_hex(color_letras_2)
+    background_color: (0, 0, 0, 0)
+    halign: 'center'
+    valign: 'middle'
+
+
+<Popup_banner_speed>:
+    auto_dismiss: False
+    size_hint: 0.6, 0.2
+    title: ''
+    separator_height: 0
+    background_color: utils.get_color_from_hex(color_popup)
+
+    BoxLayout:
+        orientation: "vertical"
+        size: root.width, root.height
+        canvas.before:
+            Color:
+                rgba: utils.get_color_from_hex(color_popup)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            id: label_popup
+            color: utils.get_color_from_hex(color_letras_2)
+            text: ""
+            halign: 'center'
+            valign: 'middle'
+
+        Button:
+            text: "CERRAR"
+            size_hint_y: 0.4
+            on_release: root.on_close()
+
+#################### VISTA PRINCIPAL REORGANIZADA ##############
+<viewMain>:
+    canvas.before:
+        Color:
+            rgba: (utils.get_color_from_hex(color_fondo_pantalla))
+        Rectangle:
+            size: root.width, root.height
+
+    BoxLayout:
+        orientation: 'vertical'
+        size: root.width, root.height
+
+        # Fila superior: Botones de control principal
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.25
+            ToggleButton:
+
+            ToggleButton:
+            Button:
+                id: stop_button
+                text: label_stop
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex(color_stop) if self.state == 'normal' else utils.get_color_from_hex(color_btn_press)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [30]
+
+        # Fila central: Bocina y control de vueltas
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.5
+
+            BoxLayout:
+                orientation: 'vertical'
+                Label:
+                    text: str(root.speed) + label_KMPH
+
+        # Fila inferior: Modos de operación
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.25
+            BoxLayout:
+            BoxLayout:
+            BoxLayout:
+
+
+<FileListScreen>:
+    BoxLayout:
+        orientation: "vertical"
+
+        Label:
+            text: "Archivos disponibles"
+            size_hint_y: 0.1
+
+        ScrollView:
+            GridLayout:
+                id: file_list
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+
+        Button:
+            text: "Volver"
+            size_hint_y: 0.1
+            on_release: app.root.current = "main"
+
+<FileViewerScreen>:
+    BoxLayout:
+        orientation: "vertical"
+
+        ScrollView:
+            Label:
+                text: root.content
+                text_size: self.width, None
+                size_hint_y: None
+                height: self.texture_size[1]
+
+        Button:
+            text: "Volver"
+            size_hint_y: 0.1
+            on_release: app.root.current = "file_list"
+

@@ -156,7 +156,7 @@ class viewMain(Widget):
     def _open_popup(self, dt):
         if not self.popup:
             self.popup = Popup_banner()
-            self.popup.setup_text("ZETA DE EMERGENCIA PRESIONADO")
+            self.popup.setup_text("EMERGENCIA PRESIONADA")
             self.popup.open()
 
     def _dismiss_popup(self, dt):
