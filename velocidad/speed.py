@@ -7,12 +7,22 @@ from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
 
-import win32file
 import time, threading
 import logging
 import os
 import stat
 import shutil
+
+import platform
+SO = platform.system()
+
+if SO == "Windows":
+    try:
+        import win32file
+    except ImportError:
+        win32file = None
+else:
+    win32file = None
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -35,6 +45,15 @@ def export_to_usb(source_file, usb_drive):
         log.warning(f"Error exportando archivo: {e}")
 
 def get_usb_drives():
+    if SO == "Windows":
+        return get_usb_drives_windows()
+    else:
+        return get_usb_drives_linux()
+
+def get_usb_drives_windows():
+    if win32file is None:
+        return []
+
     drives = []
     bitmask = win32file.GetLogicalDrives()
     for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
@@ -43,6 +62,19 @@ def get_usb_drives():
             if win32file.GetDriveType(drive) == win32file.DRIVE_REMOVABLE:
                 drives.append(drive)
         bitmask >>= 1
+    return drives
+
+
+def get_usb_drives_linux():
+    base = f"/media/{os.getlogin()}/"
+    if not os.path.exists(base):
+        return []
+
+    drives = []
+    for d in os.listdir(base):
+        path = os.path.join(base, d)
+        if os.path.ismount(path):
+            drives.append(path)
     return drives
 
 class MainScreen(Screen):
@@ -229,7 +261,7 @@ class FileListScreen(Screen):
             return
 
         usb = usb_list[0]
-        files = [f for f in os.listdir(".") if f.startswith("evento_") and f.endswith(".txt")]
+        files = [f for f in os.listdir(".") if f.endswith(".txt")]
 
         for f in files:
             export_to_usb(f, usb)

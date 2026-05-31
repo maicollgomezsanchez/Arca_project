@@ -169,3 +169,26 @@ babylandia y carrusel:
             size_hint_y: 0.1
             on_release: app.root.current = "file_list"
 
+
+    # funciones de  pop up
+    def show_popup(self):
+        if  not self.popup_enabled:
+            self.popup_enabled = True
+            Clock.schedule_once(self._open_popup, 0)
+
+    def close_popup(self):
+        if self.popup_enabled:
+            self.popup_enabled = False
+            Clock.schedule_once(self._dismiss_popup, 0)
+
+    def _open_popup(self, dt):
+        if not self.popup:
+            self.popup = Popup_banner_speed()
+            #self.popup.setup_text("EMERGENCIA PRESIONADO")
+            # cuando el popup se cierre, ejecutar _dismiss_popup
+            self.popup.bind(on_dismiss=lambda *args: self._dismiss_popup(0))
+            self.popup.open()
+
+    def _dismiss_popup(self, dt):
+        self.popup = None
+        self.popup_enabled = False
