@@ -1,18 +1,18 @@
 from kivy.app import App
 from kivy.lang import Builder
-from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty, StringProperty
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.uix.screenmanager import Screen
+from kivy.uix.button import Button
 
+import win32file
 import time, threading
 import logging
 import os
 import stat
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.button import Button
-
+import shutil
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -26,21 +26,25 @@ def window_setup():
     Window.fullscreen = False
     Window.show_cursor = True
     Window.release_all_keyboards()
-    
 
-class Popup_banner_speed(Popup):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+def export_to_usb(source_file, usb_drive):
+    try:
+        destination = os.path.join(usb_drive, os.path.basename(source_file))
+        shutil.copy2(source_file, destination)
+    except Exception as e:
+        log.warning(f"Error exportando archivo: {e}")
 
-    def setup_text(self, new_text):
-        self.ids.label_popup.text = new_text
-    
-    def on_close(self):
-        # Este método se llama desde el botón del popup
-        self.dismiss()
+def get_usb_drives():
+    drives = []
+    bitmask = win32file.GetLogicalDrives()
+    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        if bitmask & 1:
+            drive = f"{letter}:\\"
+            if win32file.GetDriveType(drive) == win32file.DRIVE_REMOVABLE:
+                drives.append(drive)
+        bitmask >>= 1
+    return drives
 
-
-#class viewMain(Widget):
 class MainScreen(Screen):
     speed = NumericProperty(0)
     active_file = StringProperty("")
@@ -82,29 +86,6 @@ class MainScreen(Screen):
         finally:
             if self.log_enabled: self.close_and_save_file()
             log.info("Pines cerrados correctamente")
-
-    # funciones de  pop up
-    def show_popup(self):
-        if  not self.popup_enabled:
-            self.popup_enabled = True
-            Clock.schedule_once(self._open_popup, 0)
-
-    def close_popup(self):
-        if self.popup_enabled:
-            self.popup_enabled = False
-            Clock.schedule_once(self._dismiss_popup, 0)
-
-    def _open_popup(self, dt):
-        if not self.popup:
-            self.popup = Popup_banner_speed()
-            #self.popup.setup_text("EMERGENCIA PRESIONADO")
-            # cuando el popup se cierre, ejecutar _dismiss_popup
-            self.popup.bind(on_dismiss=lambda *args: self._dismiss_popup(0))
-            self.popup.open()
-
-    def _dismiss_popup(self, dt):
-        self.popup = None
-        self.popup_enabled = False
 
     # hilo 
     def read_speed(self, get_RPM, _P_mts):
@@ -182,6 +163,7 @@ class MainScreen(Screen):
         try:
             os.chmod(self.log_filename, stat.S_IREAD)
             log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
+            self.active_file = ""
         except Exception as e:
             log.error("Error al cerrar archivo:", e)
 
@@ -216,7 +198,6 @@ class MainScreen(Screen):
         # Si no fue el stop_button, deja que los hijos (incluido "Ver archivos") procesen el toque
         return super().on_touch_down(touch)
 
-
 # nuevas pantallas
 class FileListScreen(Screen):
     def on_pre_enter(self):
@@ -240,6 +221,20 @@ class FileListScreen(Screen):
         viewer = self.manager.get_screen("file_viewer")
         viewer.load_file(filename)
         self.manager.current = "file_viewer"
+        
+    def exportar_todos_usb(self):
+        usb_list = get_usb_drives()
+        if not usb_list:
+            log.warning("No hay USB conectado")
+            return
+
+        usb = usb_list[0]
+        files = [f for f in os.listdir(".") if f.startswith("evento_") and f.endswith(".txt")]
+
+        for f in files:
+            export_to_usb(f, usb)
+
+        log.info(f"Exportación completa a {usb}")
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
