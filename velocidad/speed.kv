@@ -63,6 +63,12 @@ ScreenManager:
             size_hint_y: 0.1
             on_release: app.root.current = "main"
 
+        Button:
+            text: "Exportar todos a USB"
+            size_hint_y: 0.1
+            on_release: root.exportar_todos_usb()
+
+
 
 <FileViewerScreen>:
     BoxLayout:
