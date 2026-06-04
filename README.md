@@ -42,6 +42,11 @@ sudo raspi-config:
    interface_options: VNC/enable (k0)
 sudo apt-get update
 sudo apt-get upgrade
+
+
+#por si no se necesita el entorno virtual
+sudo apt update
+sudo apt install python3-kivy
 ```
 ## crear entorno virtual:
 
@@ -65,6 +70,7 @@ sudo apt-get upgrade
 
 ```bash
 cd sudo nano /home/pi/.kivy/config.ini 
+
 
 ```
 reemplazar por  /kivy/config.ini

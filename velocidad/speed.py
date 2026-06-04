@@ -80,8 +80,10 @@ def get_usb_drives_linux():
 class MainScreen(Screen):
     speed = NumericProperty(0)
     active_file = StringProperty("")
+    
   #variables globales
     def init_vars(self):
+        #self.counter_pulse = None
         self.RPM_sensor = False
         self.popup_enabled = False
         self.popup = None
@@ -91,7 +93,7 @@ class MainScreen(Screen):
         self.log_enabled = False
         self.log_filename = None
         self.last_pulse_time = None
-        self.log_timeout = 60  # segundos sin pulsos para cerrar archivo
+        self.log_timeout = 5  # segundos sin pulsos para cerrar archivo
 
 
     # funciones HMI
@@ -121,7 +123,7 @@ class MainScreen(Screen):
 
     # hilo 
     def read_speed(self, get_RPM, _P_mts):
-        _last = None
+        self._last = None
         while self.running:
             # Esperar flanco de subida
             while not get_RPM():
@@ -130,16 +132,22 @@ class MainScreen(Screen):
                         self.close_and_save_file()
                     return
                 now_ = time.time()
-                # Cerrar archivo si pasan 60s sin pulsos
-                if self.log_enabled and self.last_pulse_time:
-                    if now_ - self.last_pulse_time > self.log_timeout:
+                # Cerrar archivo si pasan timeout sin pulsos o un solo pulso
+                if self.last_pulse_time:
+                    if (now_ - self.last_pulse_time) >= self.log_timeout:
+                        self.last_pulse_time = None
+                        if not self.log_enabled: 
+                            log.warning("un solo pulso no contar")
+                        else:
+                            log.info("cerrando por timeout")
                         self.close_and_save_file()
                 time.sleep(0.001)
             #pulso detectado
             _now = time.time()
+            self.last_pulse_time = _now
 
-            if _last is not None:
-                _dt = _now - _last
+            if self._last is not None:
+                _dt = _now - self._last
 
                 if _dt > 0:
                     _m_s = _P_mts / _dt
@@ -148,7 +156,7 @@ class MainScreen(Screen):
                     Clock.schedule_once( lambda _: self.export_values(_km_h))
                     self.save_events(_km_h, _dt)
 
-            _last = _now
+            self._last = _now
 
             # Esperar a que el relé vuelva a abrirse
             while get_RPM():
@@ -190,6 +198,8 @@ class MainScreen(Screen):
             log.error("Error escribiendo archivo:", e)
     
     def close_and_save_file(self):
+        self._last = None
+        self.speed = 0
         if not self.log_enabled or not self.log_filename: return
 
         try:

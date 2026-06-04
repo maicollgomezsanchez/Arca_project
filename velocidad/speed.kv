@@ -34,7 +34,7 @@ ScreenManager:
         Button:
             text: "Ver archivos"
             size_hint_y: 0.15
-            on_release: print("CAMBIANDO A FILE_LIST"); app.root.current = "file_list"
+            on_release: root.close_and_save_file(); app.root.current = "file_list"
 
 
 <FileListScreen>:
