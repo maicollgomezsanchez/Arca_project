@@ -89,7 +89,7 @@ class MainScreen(Screen):
         self.RPM_sensor = False
         self.popup_enabled = False
         self.popup = None
-        self.buttons_name = ["stop_button"]
+        self.buttons_name = []
 
         # Control de archivo
         self.log_enabled = False
@@ -99,16 +99,11 @@ class MainScreen(Screen):
 
 
     # funciones HMI
-    def init_hmi_buts(self):
-        for ids in self.buttons_name:
-            setattr(self, ids, self.ids[ids])
-
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.running = True
         self.init_vars()
-        #self.init_hmi_buts()
         self.thread_speed = threading.Thread(target=self.read_speed, args=(self.read_RPM, PERIMETRO), daemon=True)
         self.thread_speed.start()
 
@@ -233,12 +228,6 @@ class MainScreen(Screen):
             btn = self.ids[widget_id]
             if btn.collide_point(*touch.pos):
                 touch.grab(self)
-
-                if widget_id == "stop_button":
-                    log.info("press button")
-                    self.simular_pulso()
-                    return True  # ya manejado
-
         # Si no fue el stop_button, deja que los hijos (incluido "Ver archivos") procesen el toque
         return super().on_touch_down(touch)
 
