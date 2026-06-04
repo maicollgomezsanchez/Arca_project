@@ -1,5 +1,33 @@
 #:kivy 2.3.0
 
+<ReusablePopup>:
+    title_text: ""
+    message: ""
+
+<ReusablePopup@Popup>:
+    title: root.title_text   # ← ENLACE CORRECTO
+    message: ""
+    size_hint: .6, .4
+    auto_dismiss: False
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: 20
+        spacing: 20
+
+        Label:
+            text: root.message
+            font_size: 20
+            halign: "center"
+            valign: "middle"
+            text_size: self.width, None
+
+        Button:
+            text: "OK"
+            size_hint_y: 0.3
+            on_release: root.dismiss()
+
+
 ScreenManager:
     MainScreen:
         name: "main"
@@ -10,6 +38,17 @@ ScreenManager:
 
 
 <MainScreen>:
+    canvas.before:
+        # Capa blanca semitransparente (primero)
+        Color:
+            rgba: 1, 1, 1, .50
+
+        # Fondo (después)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+            source: "fondo.jpeg"
+
     BoxLayout:
         orientation: "vertical"
         padding: 20
@@ -29,7 +68,6 @@ ScreenManager:
             id: stop_button
             text: "Simular pulso"
             size_hint_y: 0.15
-           # on_release: root.simular_pulso()
 
         Button:
             text: "Ver archivos"
@@ -38,6 +76,15 @@ ScreenManager:
 
 
 <FileListScreen>:
+
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, .50
+        Rectangle:
+            pos: self.pos
+            size: self.size
+            source: "fondo.jpeg"
+    
     BoxLayout:
         orientation: "vertical"
         padding: 20
@@ -59,18 +106,29 @@ ScreenManager:
                 height: self.minimum_height
 
         Button:
-            text: "Volver"
-            size_hint_y: 0.1
-            on_release: app.root.current = "main"
-
-        Button:
-            text: "Exportar todos a USB"
+            text: "EXPORTAR ARCHIVOS"
             size_hint_y: 0.1
             on_release: root.exportar_todos_usb()
+        Button:
+            text: "ELIMINAR ARCHIVOS"
+            size_hint_y: 0.1
+            on_release: root.borrar_archivos()
+        Button:
+            text: "VOLVER"
+            size_hint_y: 0.1
+            on_release: app.root.current = "main"
 
 
 
 <FileViewerScreen>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, .25   # negro semitransparente
+        Rectangle:
+            pos: self.pos
+            size: self.size
+            source: "fondo.jpeg"
+
     BoxLayout:
         orientation: "vertical"
         padding: 20

@@ -2,10 +2,12 @@ from kivy.app import App
 from kivy.lang import Builder
 from kivy.properties import NumericProperty, StringProperty
 from kivy.uix.popup import Popup
+from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
+from kivy.factory import Factory
 
 import time, threading
 import logging
@@ -93,7 +95,7 @@ class MainScreen(Screen):
         self.log_enabled = False
         self.log_filename = None
         self.last_pulse_time = None
-        self.log_timeout = 5  # segundos sin pulsos para cerrar archivo
+        self.log_timeout = 60  # segundos sin pulsos para cerrar archivo
 
 
     # funciones HMI
@@ -189,7 +191,7 @@ class MainScreen(Screen):
 
         self.last_pulse_time = time.time()
         dt_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        linea = f"{dt_name}, velocidad={int(velocidad)} km/h, dt={dt:.2f} s\n"
+        linea = f"Fecha y Hora = {dt_name}, Velocidad = {int(velocidad)} km/h, Duración = {dt:.2f} s\n"
 
         try:
             with open(self.log_filename, "a", buffering=1) as f:
@@ -242,6 +244,12 @@ class MainScreen(Screen):
 
 # nuevas pantallas
 class FileListScreen(Screen):
+    def show_popup(self, title, message):
+        popup = Factory.ReusablePopup()
+        popup.title_text = title
+        popup.message = message
+        popup.open()
+
     def on_pre_enter(self):
         # Leer archivos de la carpeta raíz
         files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
@@ -268,6 +276,7 @@ class FileListScreen(Screen):
         usb_list = get_usb_drives()
         if not usb_list:
             log.warning("No hay USB conectado")
+            self.show_popup("AVISO", "NO HAY ALMACENAMIENTO EXTERNO CONECTADO")
             return
 
         usb = usb_list[0]
@@ -275,8 +284,37 @@ class FileListScreen(Screen):
 
         for f in files:
             export_to_usb(f, usb)
+        
+        if files:
+            self.show_popup("AVISO", "ARCHIVOS EXPORTADOS")
+    
+    def borrar_archivos(self):
+        files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
+        
+        for fname in files:
+            try:
+                # Quitar solo lectura si lo tiene
+                os.chmod(fname, stat.S_IWRITE)
+                # Borrar archivo
+                os.remove(fname)
 
-        log.info(f"Exportación completa a {usb}")
+            except PermissionError:
+                self.show_popup("ERROR", f"ARCHIVO PROTEGIDO: {fname}")
+                files = None
+                break
+
+            except Exception as e:
+                self.show_popup("ERROR", f"NO SE HA ELIMINADO: {fname}")
+                files = None
+                break
+        
+        if not files:
+            self.show_popup("AVISO", "NO HAY ARCHIVOS QUE BORRAR")
+        else:
+            self.show_popup("AVISO", "ARCHIVOS ELIMINADOS")
+
+        # Actualizar lista visual
+        self.ids.file_list.clear_widgets()
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
