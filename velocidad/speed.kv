@@ -5,7 +5,7 @@
     message: ""
 
 <ReusablePopup@Popup>:
-    title: root.title_text   # ← ENLACE CORRECTO
+    title: root.title_text
     message: ""
     size_hint: .6, .4
     auto_dismiss: False
@@ -41,7 +41,7 @@ ScreenManager:
     canvas.before:
         # Capa blanca semitransparente (primero)
         Color:
-            rgba: 1, 1, 1, .50
+            rgba: 1, 1, 1, .20
 
         # Fondo (después)
         Rectangle:
@@ -64,14 +64,14 @@ ScreenManager:
             font_size: 18
             size_hint_y: 0.1
 
-        Button:
-            id: stop_button
-            text: "Simular pulso"
-            size_hint_y: 0.15
+#        Button:
+#            id: stop_button
+#            text: "Simular pulso"
+#            size_hint_y: 0.1
 
         Button:
             text: "Ver archivos"
-            size_hint_y: 0.15
+            size_hint_y: 0.1
             on_release: root.close_and_save_file(); app.root.current = "file_list"
 
 
@@ -79,7 +79,7 @@ ScreenManager:
 
     canvas.before:
         Color:
-            rgba: 1, 1, 1, .50
+            rgba: 1, 1, 1, .20
         Rectangle:
             pos: self.pos
             size: self.size
@@ -123,7 +123,7 @@ ScreenManager:
 <FileViewerScreen>:
     canvas.before:
         Color:
-            rgba: 1, 1, 1, .25   # negro semitransparente
+            rgba: 1, 1, 1, .20
         Rectangle:
             pos: self.pos
             size: self.size
