@@ -208,11 +208,13 @@ class MainScreen(Screen):
 # nuevas pantallas
 class FileListScreen(Screen):
     def show_popup(self, title, message):
-        popup = Factory.ReusablePopup()
-        popup.title_text = title
-        popup.message = message
-        popup.open()
-
+        def _open(dt):
+            popup = Factory.ReusablePopup()
+            popup.title_text = title
+            popup.message = message
+            popup.open()
+        Clock.schedule_once(_open, 0)
+        
     def on_pre_enter(self):
         files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
 
@@ -238,7 +240,7 @@ class FileListScreen(Screen):
         usb_list = get_usb_drives()
         if not usb_list:
             hardware.log.warning("No hay USB conectado")
-            self.show_popup("AVISO", "NO HAY ALMACENAMIENTO EXTERNO CONECTADO")
+            self.show_popup("AVISO", "NO HAY ALMACENAMIENTO\n\r EXTERNO CONECTADO")
             return
 
         usb = usb_list[0]
@@ -271,7 +273,7 @@ class FileListScreen(Screen):
                 break
         
         if not files:
-            self.show_popup("AVISO", "NO HAY ARCHIVOS QUE BORRAR")
+            self.show_popup("AVISO", "NO HAY ARCHIVOS\n\r QUE BORRAR")
         else:
             self.show_popup("AVISO", "ARCHIVOS ELIMINADOS")
 
@@ -280,11 +282,13 @@ class FileListScreen(Screen):
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
+    filename_open = StringProperty("")
 
     def load_file(self, filename):
         try:
             with open(filename, "r") as f:
                 self.content = f.read()
+            self.filename_open = filename
         except Exception as e:
             self.content = f"Error al abrir archivo:\n{e}"
 
