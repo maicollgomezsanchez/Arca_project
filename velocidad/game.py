@@ -1,12 +1,15 @@
 from kivy.app import App
 from kivy.lang import Builder
-from kivy.properties import NumericProperty, StringProperty
+from kivy.properties import NumericProperty, StringProperty, BooleanProperty
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
 from kivy.factory import Factory
+from kivy.properties import ObjectProperty
+from kivy.uix.popup import Popup
+
 
 import time, threading
 import os
@@ -209,14 +212,30 @@ class MainScreen(Screen):
         self.log_filename = None
 
 # nuevas pantallas
+
+
+class ReusablePopup(Popup):
+    title_text = StringProperty("")
+    message = StringProperty("")
+    on_confirm = ObjectProperty(None)
+    confirm_mode = BooleanProperty(False)
+
 class FileListScreen(Screen):
-    def show_popup(self, title, message):
+    def show_popup(self, title, message, on_confirm=None):
         def _open(dt):
             popup = Factory.ReusablePopup()
             popup.title_text = title
             popup.message = message
+            popup.confirm_mode = on_confirm is not None
+
+            # Si el popup tiene un botón OK, le asignamos la acción
+            if on_confirm:
+                popup.on_confirm = on_confirm
+
             popup.open()
+
         Clock.schedule_once(_open, 0)
+
         
     def on_pre_enter(self):
         files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
@@ -258,31 +277,37 @@ class FileListScreen(Screen):
     
     def borrar_archivos(self):
         files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
-        
+
+        if not files:
+            self.show_popup("AVISO", "SIN EVENTOS")
+            return
+
+        # Mostrar popup de confirmación
+        self.show_popup(
+            "AVISO",
+            "¿DESEA ELIMINAR TODOS LOS EVENTOS?",
+            on_confirm=lambda: self._borrar_archivos_confirmado(files)
+        )
+
+            
+    def _borrar_archivos_confirmado(self, files):
         for fname in files:
             try:
-                # Quitar solo lectura si lo tiene
                 os.chmod(fname, stat.S_IWRITE)
-                # Borrar archivo
                 os.remove(fname)
 
             except PermissionError:
                 self.show_popup("ERROR", f"ARCHIVO PROTEGIDO: {fname}")
-                files = None
-                break
+                return
 
             except Exception as e:
                 self.show_popup("ERROR", f"NO SE HA ELIMINADO: {fname}")
-                files = None
-                break
-        
-        if not files:
-            self.show_popup("AVISO", "NO HAY ARCHIVOS\n\r QUE BORRAR")
-        else:
-            self.show_popup("AVISO", "ARCHIVOS ELIMINADOS")
+                return
 
         # Actualizar lista visual
         self.ids.file_list.clear_widgets()
+        self.show_popup("AVISO", "EVENTOS ELIMINADOS")
+
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
