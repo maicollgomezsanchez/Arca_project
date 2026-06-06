@@ -1,12 +1,14 @@
 #:kivy 2.1.0
 
-<ReusablePopup>:
-    title_text: ""
-    message: ""
+#:set lvolver "VOLVER"
+#:set leventos "VER EVENTOS"
+#:set lexportar "EXPORTAR EVENTOS"
+#:set leliminar "ELIMINAR"
 
 <ReusablePopup@Popup>:
-    title: root.title_text
+    title_text: ""
     message: ""
+    title: root.title_text
     size_hint: .6, .4
     auto_dismiss: False
 
@@ -20,12 +22,14 @@
             font_size: 20
             halign: "center"
             valign: "middle"
-            text_size: self.width, None
+            text_size: self.width, self.height
+            size_hint_y: 0.5
 
         Button:
             text: "OK"
-            size_hint_y: 0.3
-            on_release: root.dismiss()
+            size_hint_y: 0.5
+            on_press:
+				root.dismiss()
 
 
 ScreenManager:
@@ -41,7 +45,7 @@ ScreenManager:
     canvas.before:
         # Capa blanca semitransparente (primero)
         Color:
-            rgba: 1, 1, 1, .30
+            rgba: 1, 1, 1, .5
 
         Rectangle:
             pos: self.pos
@@ -61,11 +65,11 @@ ScreenManager:
         Label:
             text: "Archivo activo: " + root.active_file
             font_size: 18
-            size_hint_y: 0.1
+            size_hint_y: 0.15
 
         Button:
-            text: "Ver archivos"
-            size_hint_y: 0.1
+            text: leventos
+            size_hint_y: 0.15
             on_release: root.close_and_save_file(); app.root.current = "file_list"
 
 
@@ -73,7 +77,7 @@ ScreenManager:
 
     canvas.before:
         Color:
-            rgba: 1, 1, 1, .20
+            rgba: 1, 1, 1, .30
         Rectangle:
             pos: self.pos
             size: self.size
@@ -100,24 +104,23 @@ ScreenManager:
                 height: self.minimum_height
 
         Button:
-            text: "EXPORTAR ARCHIVOS"
-            size_hint_y: 0.1
+            text: lexportar
+            size_hint_y: 0.15
             on_release: root.exportar_todos_usb()
         Button:
-            text: "ELIMINAR ARCHIVOS"
-            size_hint_y: 0.1
+            text: leliminar
+            size_hint_y: 0.15
             on_release: root.borrar_archivos()
         Button:
-            text: "VOLVER"
-            size_hint_y: 0.1
+            text: lvolver
+            size_hint_y: 0.15
             on_release: app.root.current = "main"
-
 
 
 <FileViewerScreen>:
     canvas.before:
         Color:
-            rgba: 1, 1, 1, .20
+            rgba: 1, 1, 1, .30
         Rectangle:
             pos: self.pos
             size: self.size
@@ -129,21 +132,21 @@ ScreenManager:
         spacing: 10
 
         Label:
-            text: "Contenido del archivo"
-            font_size: 28
+            text: root.filename_open
+            font_size: 30
             size_hint_y: 0.1
 
         ScrollView:
-            size_hint_y: 0.8
+            size_hint_y: 0.75
 
             Label:
                 text: root.content
-                font_size: 18
+                font_size: 25
                 text_size: self.width, None
                 size_hint_y: None
                 height: self.texture_size[1]
 
         Button:
-            text: "Volver"
-            size_hint_y: 0.1
+            text: lvolver
+            size_hint_y: 0.15
             on_release: app.root.current = "file_list"
