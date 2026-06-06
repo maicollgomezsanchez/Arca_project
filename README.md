@@ -45,7 +45,6 @@ sudo apt-get upgrade
 
 
 #por si no se necesita el entorno virtual
-sudo apt update
 sudo apt install python3-kivy
 ```
 ## crear entorno virtual:
@@ -107,6 +106,32 @@ RestartSec=1
 WantedBy=graphical.target
 
 ```
+si no es un entorno virtual
+
+```bash
+[Unit]
+Description=Game_App
+After=multi-user.target graphical.target
+Wants=graphical.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/game
+ExecStart=/usr/bin/python3 /home/pi/game/game.py
+
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+Environment=XAUTHORITY=/home/pi/.Xauthority
+
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=graphical.target
+
+```
+
 ## comandos de servicio de auto ejecucion y encendido automatico
 
 ```bash
