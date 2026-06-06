@@ -39,7 +39,7 @@ Para ejecutar este proyecto, necesitas tener instaladas las siguientes dependenc
 
 ```bash
 sudo raspi-config:
-   interface_options: VNC/enable (k0)
+   interface_options: all ok
 sudo apt-get update
 sudo apt-get upgrade
 
@@ -58,18 +58,17 @@ sudo apt install python3-kivy
    pip install kivy
    sudo apt-get install libgl1-mesa-glx libgles2-mesa libegl1-mesa libmtdev1
    pip install gpiozero
+```
+instalando gpiozero
 
-   sudo apt install python3-pip python3-dev -y
-   sudo apt install python3-rpi.gpio python3-pigpio python3-gpiozero -y
-   pip install --upgrade pyinstaller
-   pyinstaller --version
-   sudo pigpiod
+```bash
+   sudo apt install python3-gpiozero
+   sudo apt install python-gpiozero
 ```
 ## cambiar el config.init de kivy:
 
 ```bash
 cd sudo nano /home/pi/.kivy/config.ini 
-
 
 ```
 reemplazar por  /kivy/config.ini

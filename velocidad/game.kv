@@ -5,9 +5,7 @@
 #:set lexportar "EXPORTAR EVENTOS"
 #:set leliminar "ELIMINAR"
 
-<ReusablePopup@Popup>:
-    title_text: ""
-    message: ""
+<ReusablePopup>:
     title: root.title_text
     size_hint: .6, .4
     auto_dismiss: False
@@ -25,12 +23,24 @@
             text_size: self.width, self.height
             size_hint_y: 0.5
 
-        Button:
-            text: "OK"
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: 20
             size_hint_y: 0.5
-            on_press:
-				root.dismiss()
 
+            Button:
+                text: "NO"
+                size_hint_x: 1
+                opacity: 1 if root.confirm_mode else 0
+                disabled: not root.confirm_mode
+                on_release: root.dismiss()
+
+            Button:
+                text: "ELIMINAR" if root.confirm_mode else "OK"
+                size_hint_x: 1
+                on_release:
+                    root.dismiss()
+                    if root.on_confirm: root.on_confirm()
 
 ScreenManager:
     MainScreen:
