@@ -1,7 +1,6 @@
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.properties import NumericProperty, StringProperty
-from kivy.uix.popup import Popup
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -10,10 +9,10 @@ from kivy.uix.button import Button
 from kivy.factory import Factory
 
 import time, threading
-import logging
 import os
 import stat
 import shutil
+import hardware
 
 import platform
 SO = platform.system()
@@ -26,17 +25,14 @@ if SO == "Windows":
 else:
     win32file = None
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-log = logging.getLogger(__name__)
 
 PERIMETRO = 35 # en metros
+TIMEOUT = 30 # segundos sin pulsos para cerrar archivo
 
 def window_setup():
     Window.borderless = False
-    Window.fullscreen = False
-    Window.show_cursor = True
+    Window.fullscreen = True
+    Window.show_cursor = False
     Window.release_all_keyboards()
 
 def export_to_usb(source_file, usb_drive):
@@ -44,7 +40,7 @@ def export_to_usb(source_file, usb_drive):
         destination = os.path.join(usb_drive, os.path.basename(source_file))
         shutil.copy2(source_file, destination)
     except Exception as e:
-        log.warning(f"Error exportando archivo: {e}")
+        hardware.log.warning(f"Error exportando archivo: {e}")
 
 def get_usb_drives():
     if SO == "Windows":
@@ -85,42 +81,44 @@ class MainScreen(Screen):
     
   #variables globales
     def init_vars(self):
-        #self.counter_pulse = None
         self.RPM_sensor = False
-        self.popup_enabled = False
         self.popup = None
-        self.buttons_name = []
 
         # Control de archivo
         self.log_enabled = False
         self.log_filename = None
         self.last_pulse_time = None
-        self.log_timeout = 60  # segundos sin pulsos para cerrar archivo
 
-
-    # funciones HMI
-    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.running = True
         self.init_vars()
-        self.thread_speed = threading.Thread(target=self.read_speed, args=(self.read_RPM, PERIMETRO), daemon=True)
+        self.thread_speed = threading.Thread(
+            target=self.read_speed,
+            args=(self.read_RPM, PERIMETRO),
+            daemon=True
+        )
         self.thread_speed.start()
+        #enlazar sensor con 
+        hardware.input_sensor.when_pressed = self.on_sensor
+        hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
         try:
             self.thread_speed.join(timeout=1)
-            log.info("Hilos detenidos correctamente")
+            hardware.log.info("Hilos detenidos correctamente")
         except Exception as e:
-            log.error(f"Error al detener los hilos: {e}")
+            hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
             if self.log_enabled: self.close_and_save_file()
-            log.info("Pines cerrados correctamente")
+            hardware.log.info("Pines cerrados correctamente")
+            hardware.close_all_pins()
 
     # hilo 
     def read_speed(self, get_RPM, _P_mts):
         self._last = None
+        hardware.log.info("inicia sensor de velocidad")
         while self.running:
             # Esperar flanco de subida
             while not get_RPM():
@@ -131,12 +129,10 @@ class MainScreen(Screen):
                 now_ = time.time()
                 # Cerrar archivo si pasan timeout sin pulsos o un solo pulso
                 if self.last_pulse_time:
-                    if (now_ - self.last_pulse_time) >= self.log_timeout:
+                    if (now_ - self.last_pulse_time) >= TIMEOUT:
                         self.last_pulse_time = None
-                        if not self.log_enabled: 
-                            log.warning("un solo pulso no contar")
-                        else:
-                            log.info("cerrando por timeout")
+                        if self.log_enabled:
+                            hardware.log.info("cerrando por timeout")
                         self.close_and_save_file()
                 time.sleep(0.001)
             #pulso detectado
@@ -155,7 +151,6 @@ class MainScreen(Screen):
 
             self._last = _now
 
-            # Esperar a que el relé vuelva a abrirse
             while get_RPM():
                 if not self.running:
                     if self.log_enabled: 
@@ -165,13 +160,14 @@ class MainScreen(Screen):
 
     def read_RPM(self):
         return self.RPM_sensor
-    
-    def simular_pulso(self):
-        self.RPM_sensor = True
-        time.sleep(0.01)
-        self.RPM_sensor = False
         
+    def on_sensor(self):
+        self.RPM_sensor = True
+    
+    def off_sensor(self):
+        self.RPM_sensor = False
 
+ 
 # log events
     def export_values (self, _speed):
         self.speed = int(_speed)
@@ -181,18 +177,18 @@ class MainScreen(Screen):
             dt_name = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
             self.log_filename = f"Evento_{dt_name}.txt"
             self.log_enabled = True
-            log.info(f"Nuevo archivo creado: {self.log_filename}")
+            hardware.log.info(f"Nuevo archivo creado: {self.log_filename}")
             self.active_file = self.log_filename
 
         self.last_pulse_time = time.time()
         dt_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        linea = f"Fecha y Hora = {dt_name}, Velocidad = {int(velocidad)} km/h, Duración = {dt:.2f} s\n"
+        linea = f"Fecha y Hora = {dt_name}, Velocidad = {int(velocidad)} km/h, Tiempo = {dt:.2f} s\n"
 
         try:
             with open(self.log_filename, "a", buffering=1) as f:
                 f.write(linea)
         except Exception as e:
-            log.error("Error escribiendo archivo:", e)
+            hardware.log.error("Error escribiendo archivo:", e)
     
     def close_and_save_file(self):
         self._last = None
@@ -201,35 +197,13 @@ class MainScreen(Screen):
 
         try:
             os.chmod(self.log_filename, stat.S_IREAD)
-            log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
+            hardware.log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
             self.active_file = ""
         except Exception as e:
-            log.error("Error al cerrar archivo:", e)
+            hardware.log.error("Error al cerrar archivo:", e)
 
         self.log_enabled = False
         self.log_filename = None
-
-
-
-# fucniones tactiles
-    def on_touch_move(self, touch):
-        if touch.grab_current is self:
-            if not self.collide_point(*touch.pos):
-                self.on_touch_up(touch)
-                touch.ungrab(self)
-            return True
-        return super().on_touch_move(touch)
-
-    def on_touch_up(self, touch):
-        return super().on_touch_up(touch)
-
-    def on_touch_down(self, touch):
-        for widget_id in self.buttons_name:
-            btn = self.ids[widget_id]
-            if btn.collide_point(*touch.pos):
-                touch.grab(self)
-        # Si no fue el stop_button, deja que los hijos (incluido "Ver archivos") procesen el toque
-        return super().on_touch_down(touch)
 
 # nuevas pantallas
 class FileListScreen(Screen):
@@ -240,7 +214,6 @@ class FileListScreen(Screen):
         popup.open()
 
     def on_pre_enter(self):
-        # Leer archivos de la carpeta raíz
         files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
 
         # Limpiar lista
@@ -264,7 +237,7 @@ class FileListScreen(Screen):
     def exportar_todos_usb(self):
         usb_list = get_usb_drives()
         if not usb_list:
-            log.warning("No hay USB conectado")
+            hardware.log.warning("No hay USB conectado")
             self.show_popup("AVISO", "NO HAY ALMACENAMIENTO EXTERNO CONECTADO")
             return
 
@@ -329,4 +302,8 @@ if __name__ == "__main__":
         #Builder.load_file('speed.kv')
         mainApp().run()
     except Exception as e:
-        log.error(f"error de excepcion {e}")
+        hardware.log.error(f"error de excepcion {e}")
+    except KeyboardInterrupt:
+        hardware.log.error("keyboard exit")
+    finally:
+        hardware.close_all_pins()
