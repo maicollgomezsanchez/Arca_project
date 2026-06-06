@@ -64,16 +64,19 @@ def get_usb_drives_windows():
 
 
 def get_usb_drives_linux():
-    base = f"/media/{os.getlogin()}/"
-    if not os.path.exists(base):
-        return []
-
     drives = []
-    for d in os.listdir(base):
-        path = os.path.join(base, d)
-        if os.path.ismount(path):
-            drives.append(path)
+    media_path = "/media/pi"
+
+    if not os.path.exists(media_path):
+        return drives
+
+    for item in os.listdir(media_path):
+        full_path = os.path.join(media_path, item)
+        if os.path.ismount(full_path):
+            drives.append(full_path)
+
     return drives
+
 
 class MainScreen(Screen):
     speed = NumericProperty(0)
@@ -238,9 +241,10 @@ class FileListScreen(Screen):
         
     def exportar_todos_usb(self):
         usb_list = get_usb_drives()
+        hardware.log.warning(f"USB detectados: {usb_list}")
         if not usb_list:
             hardware.log.warning("No hay USB conectado")
-            self.show_popup("AVISO", "NO HAY ALMACENAMIENTO\n\r EXTERNO CONECTADO")
+            self.show_popup("AVISO", "NO HAY USB CONECTADO")
             return
 
         usb = usb_list[0]
@@ -295,7 +299,7 @@ class FileViewerScreen(Screen):
 class mainApp(App):
     def build(self):
         window_setup()
-        return Builder.load_file("speed.kv")
+        return Builder.load_file("game.kv")
 
     def on_stop(self):
         main_screen = self.root.get_screen("main")
