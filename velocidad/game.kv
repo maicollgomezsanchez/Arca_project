@@ -1,10 +1,13 @@
-#:kivy 2.1.0
+#:import Factory kivy.factory.Factory
 
 #:set lvolver "VOLVER"
 #:set leventos "VER EVENTOS"
 #:set lexportar "EXPORTAR EVENTOS"
 #:set leliminar "ELIMINAR"
 
+# ---------------------------------------------------
+# POPUP REUTILIZABLE
+# ---------------------------------------------------
 <ReusablePopup>:
     title: root.title_text
     size_hint: .6, .4
@@ -14,7 +17,7 @@
         orientation: "vertical"
         padding: 20
         spacing: 20
-
+        # Mensaje del popup
         Label:
             text: root.message
             font_size: 20
@@ -22,26 +25,26 @@
             valign: "middle"
             text_size: self.width, self.height
             size_hint_y: 0.5
-
+        # Botones del popup
         BoxLayout:
             orientation: "horizontal"
             spacing: 20
             size_hint_y: 0.5
-
             Button:
                 text: "NO"
                 size_hint_x: 1
                 opacity: 1 if root.confirm_mode else 0
                 disabled: not root.confirm_mode
                 on_release: root.dismiss()
-
             Button:
                 text: "ELIMINAR" if root.confirm_mode else "OK"
                 size_hint_x: 1
                 on_release:
                     root.dismiss()
                     if root.on_confirm: root.on_confirm()
-
+# ---------------------------------------------------
+# GESTOR DE PANTALLAS
+# ---------------------------------------------------
 ScreenManager:
     MainScreen:
         name: "main"
@@ -49,42 +52,66 @@ ScreenManager:
         name: "file_list"
     FileViewerScreen:
         name: "file_viewer"
-
-
+# ---------------------------------------------------
+# PANTALLA PRINCIPAL
+# ---------------------------------------------------
 <MainScreen>:
     canvas.before:
-        # Capa blanca semitransparente (primero)
         Color:
             rgba: 1, 1, 1, .5
-
         Rectangle:
             pos: self.pos
             size: self.size
             source: "fondo.jpeg"
-
     BoxLayout:
         orientation: "vertical"
         padding: 20
         spacing: 20
+        # FILA 1 - BOTON ARRIBA A LA DERECHA
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1
 
-        Label:
-            text: "Velocidad: " + str(root.speed) + " km/h"
-            font_size: 40
-            size_hint_y: 0.5
-
-        Label:
-            text: "Archivo activo: " + root.active_file
-            font_size: 18
-            size_hint_y: 0.15
-
-        Button:
-            text: leventos
-            size_hint_y: 0.15
-            on_release: root.close_and_save_file(); app.root.current = "file_list"
-
-
+            Widget:
+            Button:
+                text: leventos
+                font_size: 28
+                size_hint_x: None
+                width: dp(180)
+                on_release:
+                    root.nextPage = True
+                    root.close_and_save_file()
+                    app.root.current = "file_list"
+        # FILA 2 - VELOCIMETRO
+        SpeedMeter:
+            id: speed
+            max: 150
+            tick: 10
+            start_angle: -90
+            display_first: False
+            display_last: False
+            end_angle: 90
+            subtick: 5
+            label: 'Km/h'
+            value: root.speed
+            cadran_color: '#000000'
+            sectors: (0, '#ffffff77')
+            needle_color: '#ff0000'
+        # FILA 3 - BOTON ABAJO IZQUIERDA
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1
+            Widget:
+            Button:
+                text: "Pulsos"
+                size_hint_x: None
+                width: dp(150)
+                on_release:
+                    root.simular_pulso()
+# ---------------------------------------------------
+# PANTALLA LISTA DE ARCHIVOS
+# ---------------------------------------------------
 <FileListScreen>:
-
     canvas.before:
         Color:
             rgba: 1, 1, 1, .30
@@ -92,41 +119,60 @@ ScreenManager:
             pos: self.pos
             size: self.size
             source: "fondo.jpeg"
-    
     BoxLayout:
-        orientation: "vertical"
+        orientation: "horizontal"
         padding: 20
-        spacing: 10
-
-        Label:
-            text: "Archivos disponibles"
-            font_size: 28
-            size_hint_y: 0.1
-
-        ScrollView:
-            size_hint_y: 0.8
-
-            GridLayout:
-                id: file_list
-                cols: 1
-                spacing: 10
+        spacing: 20
+        # PANEL IZQUIERDO - LISTA DE ARCHIVOS
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: 0.75
+            Label:
+                text: "Archivos disponibles"
+                font_size: 28
+                size_hint_y: 0.1
+            ScrollView:
+                size_hint_y: 0.9
+                GridLayout:
+                    id: file_list
+                    cols: 1
+                    spacing: 10
+                    size_hint_y: None
+                    height: self.minimum_height
+        # PANEL DERECHO - MENU DE ACCIONES
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: 0.25
+            padding: 10
+            spacing: 10
+            # Botones superiores
+            BoxLayout:
+                orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
-
-        Button:
-            text: lexportar
-            size_hint_y: 0.15
-            on_release: root.exportar_todos_usb()
-        Button:
-            text: leliminar
-            size_hint_y: 0.15
-            on_release: root.borrar_archivos()
-        Button:
-            text: lvolver
-            size_hint_y: 0.15
-            on_release: app.root.current = "main"
-
-
+                spacing: 10
+                Button:
+                    text: lexportar
+                    size_hint_y: None
+                    height: 50
+                    on_release: root.exportar_todos_usb()
+                Button:
+                    text: leliminar
+                    size_hint_y: None
+                    height: 50
+                    on_release: root.borrar_archivos()
+            # Espacio flexible
+            Widget:
+                size_hint_y: 1
+            # Boton volver
+            Button:
+                text: lvolver
+                size_hint_y: None
+                height: 50
+                on_release: app.root.current = "main"
+# ---------------------------------------------------
+# PANTALLA VISOR DE ARCHIVOS
+# ---------------------------------------------------
 <FileViewerScreen>:
     canvas.before:
         Color:
@@ -135,28 +181,36 @@ ScreenManager:
             pos: self.pos
             size: self.size
             source: "fondo.jpeg"
-
     BoxLayout:
         orientation: "vertical"
         padding: 20
-        spacing: 10
-
+        spacing: 20
+        # TITULO CENTRADO
         Label:
             text: root.filename_open
-            font_size: 30
-            size_hint_y: 0.1
-
+            font_size: 32
+            size_hint_y: None
+            height: 60
+            halign: "center"
+            valign: "middle"
+            text_size: self.size
+        # AREA DE LECTURA
         ScrollView:
-            size_hint_y: 0.75
-
+            size_hint_y: 1
             Label:
                 text: root.content
                 font_size: 25
                 text_size: self.width, None
                 size_hint_y: None
                 height: self.texture_size[1]
-
-        Button:
-            text: lvolver
-            size_hint_y: 0.15
-            on_release: app.root.current = "file_list"
+        # BOTON VOLVER ABAJO DERECHA
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: 60
+            Widget:
+            Button:
+                text: lvolver
+                size_hint_x: .25
+                width: 150
+                on_release: app.root.current = "file_list"

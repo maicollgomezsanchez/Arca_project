@@ -184,3 +184,18 @@ sudo nanod /etc/X11/xorg.conf.d/99-calibration.conf
       Option  "InvertY"       "0"  # unless it was already set
    EndSection
 ```
+
+deshabiitar volumenes extraibles pop up:
+To get rid of the popup message:
+Open File-manager
+[Edit] --> [Preferences] --> [Volume Management]
+
+Remove tick from:
+[ ] Show available options for...........
+
+
+To get rid of desktop icon:
+Right click on screen --> [Desktop Preferences]
+
+Remove tick from:
+[ ] Mounted Disks
