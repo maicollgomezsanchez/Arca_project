@@ -30,9 +30,11 @@ else:
 
 
 PERIMETRO = 35 # en metros
-TIMEOUT = 30 # segundos sin pulsos para cerrar archivo
+TIMEOUT = 60 # segundos sin pulsos para cerrar archivo
+FRENADO = .02
 
 def window_setup():
+    Window.size = (1024, 600)    
     Window.borderless = False
     Window.fullscreen = False
     Window.show_cursor = False
@@ -67,9 +69,12 @@ class MainScreen(Screen):
     
     def on_pre_enter(self):
         self.nextPage = False
+        
   #variables globales
     def init_vars(self):
         self.RPM_sensor = False
+        self.decay_event = None
+        self.no_pulse_start = None
 
         # Control de archivo
         self.log_enabled = False
@@ -109,8 +114,11 @@ class MainScreen(Screen):
         while self.running:
             # Esperar flanco de subida
             while not get_RPM():
+                if self.no_pulse_start is None:
+                    self.no_pulse_start = time.time()
+                    Clock.schedule_once(lambda _: self.start_decay())
                 if not self.running:
-                    if self.log_enabled: 
+                    if self.log_enabled:
                         self.close_and_save_file()
                     return
                 now_ = time.time()
@@ -122,9 +130,14 @@ class MainScreen(Screen):
                             hardware.log.info("cerrando por timeout")
                         self.close_and_save_file()
                 time.sleep(0.001)
-            #pulso detectado
+            # pulso detectado
             _now = time.time()
             self.last_pulse_time = _now
+
+            self.no_pulse_start = None
+            if self.decay_event:
+                self.decay_event.cancel()
+                self.decay_event = None
 
             if self._last is not None:
                 _dt = _now - self._last
@@ -133,17 +146,39 @@ class MainScreen(Screen):
                     _m_s = _P_mts / _dt
                     _km_h = _m_s * 3.6
 
-                    Clock.schedule_once( lambda _: self.export_values(_km_h))
+                    Clock.schedule_once(lambda _: self.export_values(_km_h))
                     self.save_events(_km_h, _dt)
 
             self._last = _now
 
             while get_RPM():
                 if not self.running:
-                    if self.log_enabled: 
+                    if self.log_enabled:
                         self.close_and_save_file()
                     return
                 time.sleep(0.001)
+
+#DESACELERA
+    def start_decay(self):
+        if self.decay_event:
+            return
+        self.initial_speed = self.speed
+        self.decay_event = Clock.schedule_interval(self._decay_step, FRENADO)
+
+    def _decay_step(self, dt):
+        if self.no_pulse_start is None:
+            return False
+
+        elapsed = time.time() - self.no_pulse_start
+        # Caída lineal lenta
+        if elapsed < TIMEOUT:
+            remaining = TIMEOUT - elapsed
+            self.speed = max(0, (self.initial_speed * remaining) / TIMEOUT)
+            return True
+        # Timeout → velocidad cero
+        self.speed = 0
+        self.decay_event = None
+        return False
 
     def read_RPM(self):
         return self.RPM_sensor
@@ -165,8 +200,8 @@ class MainScreen(Screen):
         
 # log events
     def export_values (self, _speed):
-        if _speed > 150 :
-            _speed = 150
+        if _speed > 100 :
+            _speed = 100
         self.speed = _speed
     
     def save_events(self, velocidad, dt):
@@ -188,6 +223,9 @@ class MainScreen(Screen):
             hardware.log.error("Error escribiendo archivo:", e)
     
     def close_and_save_file(self):
+        self.no_pulse_start = None
+        self.decay_event.cancel()
+        self.decay_event = None
         self._last = None
         self.speed = 0
         if not self.log_enabled or not self.log_filename: return
@@ -235,6 +273,7 @@ class FileListScreen(Screen):
         # Crear botones por archivo
         for fname in files:
             btn = Button(
+                background_color="#00ccff",
                 text=fname,
                 size_hint_y=None,
                 height=40,
