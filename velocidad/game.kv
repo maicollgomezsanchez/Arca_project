@@ -5,6 +5,10 @@
 #:set lexportar "EXPORTAR EVENTOS"
 #:set leliminar "ELIMINAR"
 
+
+<Button>
+    background_color: '#01cc01'
+
 # ---------------------------------------------------
 # POPUP REUTILIZABLE
 # ---------------------------------------------------
@@ -58,56 +62,83 @@ ScreenManager:
 <MainScreen>:
     canvas.before:
         Color:
-            rgba: 1, 1, 1, .5
+            rgba: 1, 1, 1, .30
         Rectangle:
             pos: self.pos
             size: self.size
             source: "fondo.jpeg"
+
     BoxLayout:
-        orientation: "vertical"
+        orientation: "horizontal"
         padding: 20
         spacing: 20
-        # FILA 1 - BOTON ARRIBA A LA DERECHA
+
+        # -----------------------------------------
+        # PANEL IZQUIERDO (75%) - SPEEDMETER
+        # -----------------------------------------
         BoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1
+            orientation: "vertical"
+            size_hint_x: 0.75
 
             Widget:
-            Button:
-                text: leventos
-                font_size: 28
-                size_hint_x: None
-                width: dp(180)
-                on_release:
-                    root.nextPage = True
-                    root.close_and_save_file()
-                    app.root.current = "file_list"
-        # FILA 2 - VELOCIMETRO
-        SpeedMeter:
-            id: speed
-            max: 150
-            tick: 10
-            start_angle: -90
-            display_first: False
-            display_last: False
-            end_angle: 90
-            subtick: 5
-            label: 'Km/h'
-            value: root.speed
-            cadran_color: '#000000'
-            sectors: (0, '#ffffff77')
-            needle_color: '#ff0000'
-        # FILA 3 - BOTON ABAJO IZQUIERDA
+                size_hint_y: 0.1
+
+            BoxLayout:
+                size_hint_y: 0.8
+                padding: dp(10)
+                SpeedMeter:
+                    id: speed
+                    max: 120
+                    tick: 10
+                    start_angle: -120
+                    end_angle: 120
+                    display_first: False
+                    display_last: False
+                    subtick: 5
+                    label_font_size: 30
+                    label: str(int(root.speed)) + ' Km/h'
+                    value: root.speed
+                    cadran_color: '#000000'
+                    sectors: (0, '#ffffff')
+                    needle_color: '#ff0000'
+
+            #Widget:
+                #size_hint_y: 0.1
+
+        # -----------------------------------------
+        # PANEL DERECHO (25%) - BOTONES
+        # -----------------------------------------
         BoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1
-            Widget:
+            orientation: "vertical"
+            size_hint_x: 0.25
+            padding: 10
+            spacing: 10
+
+            # (Opcional) Botones superiores
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: 10
             Button:
                 text: "Pulsos"
                 size_hint_x: None
                 width: dp(150)
                 on_release:
                     root.simular_pulso()
+            # Espacio flexible para empujar el botón abajo
+            Widget:
+                size_hint_y: 1
+            # Botón eventos abajo a la derecha
+            Button:
+                text: leventos
+                size_hint_y: None
+                height: dp(50)
+                on_release:
+                    root.nextPage = True
+                    root.close_and_save_file()
+                    app.root.current = "file_list"
+
 # ---------------------------------------------------
 # PANTALLA LISTA DE ARCHIVOS
 # ---------------------------------------------------
@@ -197,12 +228,21 @@ ScreenManager:
         # AREA DE LECTURA
         ScrollView:
             size_hint_y: 1
+            
             Label:
                 text: root.content
                 font_size: 25
+                color: 0,0,0,1
                 text_size: self.width, None
                 size_hint_y: None
                 height: self.texture_size[1]
+
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.75   # fondo semitransparente
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
         # BOTON VOLVER ABAJO DERECHA
         BoxLayout:
             orientation: "horizontal"
