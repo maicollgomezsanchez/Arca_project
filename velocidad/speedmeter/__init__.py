@@ -14,7 +14,7 @@ from math import atan2, cos, pi, radians, sin
 from kivy.core.text import Label
 from kivy.graphics import *
 from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ListProperty
-from kivy.uix.image import CoreImage, Image
+from kivy.uix.image import CoreImage
 from kivy.uix.widget import Widget
 from kivy.utils import get_color_from_hex
 
@@ -66,7 +66,9 @@ class SpeedMeter(Widget):
     start_angle = NumericProperty(-90, min=-360, max=360)
     end_angle = NumericProperty(135, min=-360, max=360)
 
-    cadran_color = StringProperty('#ffffff')
+    #cadran_color = StringProperty('#ffffff')
+    cadran_color = ListProperty(get_color_from_hex("#ffffff"))
+
 
     label = StringProperty('')
     label_icon = StringProperty('')
@@ -77,7 +79,8 @@ class SpeedMeter(Widget):
     label_radius_ratio = NumericProperty(0.3, min=-1, max=1)
     label_angle_ratio = NumericProperty(0.5, min=0, max=1)
 
-    needle_color = StringProperty('#6bf2ff')
+    #needle_color = StringProperty('#6bf2ff')
+    needle_color = ListProperty(get_color_from_hex("#6bf2ff"))
     needle_image = StringProperty('needle.png')
 
     sectors = ListProperty()
@@ -185,7 +188,9 @@ example using fractions of PI."""
         r = self.r
         theta0 = self.start_angle
         theta1 = self.end_angle
-        add(Color(rgba=get_color_from_hex(self.cadran_color)))
+        #add(Color(rgba=get_color_from_hex(self.cadran_color)))
+        add(Color(rgba=self.cadran_color))
+
         if theta0 == theta1:
             add(Line(circle=(centerx, centery, r), width=1.5))
         else:
@@ -323,7 +328,9 @@ example using fractions of PI."""
             self.value = self.max
         needleSize = self.r
         s = needleSize * 2
-        add(Color(rgba=get_color_from_hex(self.needle_color)))
+        #add(Color(rgba=get_color_from_hex(self.needle_color)))
+        add(Color(rgba=self.needle_color))
+
         add(Rectangle(
             pos=(self.centerx - needleSize, self.centery - needleSize),
             size=(s, s),
