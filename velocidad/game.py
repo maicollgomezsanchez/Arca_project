@@ -7,10 +7,8 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
 from kivy.factory import Factory
 from kivy.uix.popup import Popup
-
-# Importa el SpeedMeter desde el Garden
 from speedmeter import SpeedMeter
-
+from kivy.utils import get_color_from_hex
 
 import time, threading
 import os
@@ -31,7 +29,7 @@ else:
 
 PERIMETRO = 35 # en metros
 TIMEOUT = 60 # segundos sin pulsos para cerrar archivo
-FRENADO = .02
+FRENADO = 0.02
 
 def window_setup():
     Window.size = (1024, 600)    
@@ -92,8 +90,8 @@ class MainScreen(Screen):
         )
         self.thread_speed.start()
     
-        #hardware.input_sensor.when_pressed = self.on_sensor
-        #hardware.input_sensor.when_released  = self.off_sensor
+        hardware.input_sensor.when_pressed = self.on_sensor
+        hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
@@ -273,7 +271,7 @@ class FileListScreen(Screen):
         # Crear botones por archivo
         for fname in files:
             btn = Button(
-                background_color="#00ccff",
+                background_color= get_color_from_hex("#00ccff"),
                 text=fname,
                 size_hint_y=None,
                 height=40,
@@ -363,7 +361,6 @@ class mainApp(App):
 
 if __name__ == "__main__":
     try:
-        #Builder.load_file('speed.kv')
         mainApp().run()
     except Exception as e:
         hardware.log.error(f"error de excepcion {e}")

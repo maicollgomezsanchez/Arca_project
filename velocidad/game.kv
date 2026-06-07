@@ -1,4 +1,5 @@
 #:import Factory kivy.factory.Factory
+#:import get_color_from_hex kivy.utils.get_color_from_hex
 
 #:set lvolver "VOLVER"
 #:set leventos "VER EVENTOS"
@@ -7,7 +8,7 @@
 
 
 <Button>
-    background_color: '#01cc01'
+    background_color: get_color_from_hex("#01cc01")
 
 # ---------------------------------------------------
 # POPUP REUTILIZABLE
@@ -21,7 +22,7 @@
         orientation: "vertical"
         padding: 20
         spacing: 20
-        # Mensaje del popup
+
         Label:
             text: root.message
             font_size: 20
@@ -29,23 +30,26 @@
             valign: "middle"
             text_size: self.width, self.height
             size_hint_y: 0.5
-        # Botones del popup
+
         BoxLayout:
             orientation: "horizontal"
             spacing: 20
             size_hint_y: 0.5
+
             Button:
                 text: "NO"
                 size_hint_x: 1
                 opacity: 1 if root.confirm_mode else 0
                 disabled: not root.confirm_mode
                 on_release: root.dismiss()
+
             Button:
                 text: "ELIMINAR" if root.confirm_mode else "OK"
                 size_hint_x: 1
                 on_release:
                     root.dismiss()
                     if root.on_confirm: root.on_confirm()
+
 # ---------------------------------------------------
 # GESTOR DE PANTALLAS
 # ---------------------------------------------------
@@ -56,6 +60,7 @@ ScreenManager:
         name: "file_list"
     FileViewerScreen:
         name: "file_viewer"
+
 # ---------------------------------------------------
 # PANTALLA PRINCIPAL
 # ---------------------------------------------------
@@ -73,9 +78,6 @@ ScreenManager:
         padding: 20
         spacing: 20
 
-        # -----------------------------------------
-        # PANEL IZQUIERDO (75%) - SPEEDMETER
-        # -----------------------------------------
         BoxLayout:
             orientation: "vertical"
             size_hint_x: 0.75
@@ -86,6 +88,7 @@ ScreenManager:
             BoxLayout:
                 size_hint_y: 0.8
                 padding: dp(10)
+
                 SpeedMeter:
                     id: speed
                     max: 120
@@ -98,38 +101,32 @@ ScreenManager:
                     label_font_size: 30
                     label: str(int(root.speed)) + ' Km/h'
                     value: root.speed
-                    cadran_color: '#000000'
-                    sectors: (0, '#ffffff')
-                    needle_color: '#ff0000'
+                    cadran_color: get_color_from_hex("#000000")
+                    sectors: (0, "#ffffff")
+                    needle_color: get_color_from_hex("#ff0000")
 
-            #Widget:
-                #size_hint_y: 0.1
-
-        # -----------------------------------------
-        # PANEL DERECHO (25%) - BOTONES
-        # -----------------------------------------
         BoxLayout:
             orientation: "vertical"
             size_hint_x: 0.25
             padding: 10
             spacing: 10
 
-            # (Opcional) Botones superiores
             BoxLayout:
                 orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
                 spacing: 10
+
             Button:
                 text: "Pulsos"
                 size_hint_x: None
                 width: dp(150)
                 on_release:
                     root.simular_pulso()
-            # Espacio flexible para empujar el botón abajo
+
             Widget:
                 size_hint_y: 1
-            # Botón eventos abajo a la derecha
+
             Button:
                 text: leventos
                 size_hint_y: None
@@ -150,57 +147,64 @@ ScreenManager:
             pos: self.pos
             size: self.size
             source: "fondo.jpeg"
+
     BoxLayout:
         orientation: "horizontal"
         padding: 20
         spacing: 20
-        # PANEL IZQUIERDO - LISTA DE ARCHIVOS
+
         BoxLayout:
             orientation: "vertical"
             size_hint_x: 0.75
+
             Label:
                 text: "Archivos disponibles"
                 font_size: 28
                 size_hint_y: 0.1
+
             ScrollView:
                 size_hint_y: 0.9
+
                 GridLayout:
                     id: file_list
                     cols: 1
                     spacing: 10
                     size_hint_y: None
                     height: self.minimum_height
-        # PANEL DERECHO - MENU DE ACCIONES
+
         BoxLayout:
             orientation: "vertical"
             size_hint_x: 0.25
             padding: 10
             spacing: 10
-            # Botones superiores
+
             BoxLayout:
                 orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
                 spacing: 10
+
                 Button:
                     text: lexportar
                     size_hint_y: None
                     height: 50
                     on_release: root.exportar_todos_usb()
+
                 Button:
                     text: leliminar
                     size_hint_y: None
                     height: 50
                     on_release: root.borrar_archivos()
-            # Espacio flexible
+
             Widget:
                 size_hint_y: 1
-            # Boton volver
+
             Button:
                 text: lvolver
                 size_hint_y: None
                 height: 50
                 on_release: app.root.current = "main"
+
 # ---------------------------------------------------
 # PANTALLA VISOR DE ARCHIVOS
 # ---------------------------------------------------
@@ -212,11 +216,12 @@ ScreenManager:
             pos: self.pos
             size: self.size
             source: "fondo.jpeg"
+
     BoxLayout:
         orientation: "vertical"
         padding: 20
         spacing: 20
-        # TITULO CENTRADO
+
         Label:
             text: root.filename_open
             font_size: 32
@@ -225,10 +230,10 @@ ScreenManager:
             halign: "center"
             valign: "middle"
             text_size: self.size
-        # AREA DE LECTURA
+
         ScrollView:
             size_hint_y: 1
-            
+
             Label:
                 text: root.content
                 font_size: 25
@@ -239,16 +244,18 @@ ScreenManager:
 
                 canvas.before:
                     Color:
-                        rgba: 1, 1, 1, 0.75   # fondo semitransparente
+                        rgba: 1, 1, 1, 0.75
                     Rectangle:
                         pos: self.pos
                         size: self.size
-        # BOTON VOLVER ABAJO DERECHA
+
         BoxLayout:
             orientation: "horizontal"
             size_hint_y: None
             height: 60
+
             Widget:
+
             Button:
                 text: lvolver
                 size_hint_x: .25
