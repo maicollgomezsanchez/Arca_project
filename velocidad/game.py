@@ -1,14 +1,15 @@
 from kivy.app import App
-from kivy.lang import Builder
-from kivy.properties import NumericProperty, StringProperty, BooleanProperty
+from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ObjectProperty
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
 from kivy.factory import Factory
-from kivy.properties import ObjectProperty
 from kivy.uix.popup import Popup
+
+# Importa el SpeedMeter desde el Garden
+from speedmeter import SpeedMeter
 
 
 import time, threading
@@ -16,10 +17,9 @@ import os
 import stat
 import shutil
 import hardware
-
 import platform
-SO = platform.system()
 
+SO = platform.system()
 if SO == "Windows":
     try:
         import win32file
@@ -34,7 +34,7 @@ TIMEOUT = 30 # segundos sin pulsos para cerrar archivo
 
 def window_setup():
     Window.borderless = False
-    Window.fullscreen = True
+    Window.fullscreen = False
     Window.show_cursor = False
     Window.release_all_keyboards()
 
@@ -46,27 +46,6 @@ def export_to_usb(source_file, usb_drive):
         hardware.log.warning(f"Error exportando archivo: {e}")
 
 def get_usb_drives():
-    if SO == "Windows":
-        return get_usb_drives_windows()
-    else:
-        return get_usb_drives_linux()
-
-def get_usb_drives_windows():
-    if win32file is None:
-        return []
-
-    drives = []
-    bitmask = win32file.GetLogicalDrives()
-    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-        if bitmask & 1:
-            drive = f"{letter}:\\"
-            if win32file.GetDriveType(drive) == win32file.DRIVE_REMOVABLE:
-                drives.append(drive)
-        bitmask >>= 1
-    return drives
-
-
-def get_usb_drives_linux():
     drives = []
     media_path = "/media/pi"
 
@@ -84,11 +63,13 @@ def get_usb_drives_linux():
 class MainScreen(Screen):
     speed = NumericProperty(0)
     active_file = StringProperty("")
+    nextPage = BooleanProperty(False)
     
+    def on_pre_enter(self):
+        self.nextPage = False
   #variables globales
     def init_vars(self):
         self.RPM_sensor = False
-        self.popup = None
 
         # Control de archivo
         self.log_enabled = False
@@ -105,9 +86,9 @@ class MainScreen(Screen):
             daemon=True
         )
         self.thread_speed.start()
-        #enlazar sensor con 
-        hardware.input_sensor.when_pressed = self.on_sensor
-        hardware.input_sensor.when_released  = self.off_sensor
+    
+        #hardware.input_sensor.when_pressed = self.on_sensor
+        #hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
@@ -168,15 +149,25 @@ class MainScreen(Screen):
         return self.RPM_sensor
         
     def on_sensor(self):
+        if self.nextPage:
+            return
         self.RPM_sensor = True
     
     def off_sensor(self):
+        if self.nextPage:
+            return
         self.RPM_sensor = False
 
- 
+    def simular_pulso(self):
+        self.RPM_sensor = True
+        time.sleep(0.01)
+        self.RPM_sensor = False
+        
 # log events
     def export_values (self, _speed):
-        self.speed = int(_speed)
+        if _speed > 150 :
+            _speed = 150
+        self.speed = _speed
     
     def save_events(self, velocidad, dt):
         if not self.log_enabled:
@@ -213,7 +204,6 @@ class MainScreen(Screen):
 
 # nuevas pantallas
 
-
 class ReusablePopup(Popup):
     title_text = StringProperty("")
     message = StringProperty("")
@@ -235,8 +225,7 @@ class FileListScreen(Screen):
             popup.open()
 
         Clock.schedule_once(_open, 0)
-
-        
+  
     def on_pre_enter(self):
         files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
 
@@ -263,7 +252,10 @@ class FileListScreen(Screen):
         hardware.log.warning(f"USB detectados: {usb_list}")
         if not usb_list:
             hardware.log.warning("No hay USB conectado")
-            self.show_popup("AVISO", "NO HAY USB CONECTADO")
+            self.show_popup(
+                "AVISO", 
+                "NO HAY USB CONECTADO"
+            )
             return
 
         usb = usb_list[0]
@@ -271,9 +263,10 @@ class FileListScreen(Screen):
 
         for f in files:
             export_to_usb(f, usb)
-        
-        if files:
-            self.show_popup("AVISO", "ARCHIVOS EXPORTADOS")
+        self.show_popup(
+            "AVISO", 
+            "EVENTOS EXPORTADOS" if files else " SIN EVENTOS"
+        )
     
     def borrar_archivos(self):
         files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
@@ -298,16 +291,15 @@ class FileListScreen(Screen):
 
             except PermissionError:
                 self.show_popup("ERROR", f"ARCHIVO PROTEGIDO: {fname}")
-                return
+                continue
 
             except Exception as e:
                 self.show_popup("ERROR", f"NO SE HA ELIMINADO: {fname}")
-                return
+                continue
 
         # Actualizar lista visual
         self.ids.file_list.clear_widgets()
-        self.show_popup("AVISO", "EVENTOS ELIMINADOS")
-
+        #self.show_popup("AVISO", "EVENTOS ELIMINADOS")
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
