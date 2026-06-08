@@ -43,7 +43,7 @@ sudo raspi-config:
 sudo apt-get update
 sudo apt-get upgrade
 
-
+python version 3.9.2
 #por si no se necesita el entorno virtual
 sudo apt install python3-kivy
 ```
