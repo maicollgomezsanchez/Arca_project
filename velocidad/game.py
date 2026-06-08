@@ -75,8 +75,8 @@ class MainScreen(Screen):
         )
         self.thread_speed.start()
     
-        #hardware.input_sensor.when_pressed = self.on_sensor
-        #hardware.input_sensor.when_released  = self.off_sensor
+        hardware.input_sensor.when_pressed = self.on_sensor
+        hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
@@ -128,6 +128,8 @@ class MainScreen(Screen):
                 if _dt > 0:
                     _m_s = _P_mts / _dt
                     _km_h = _m_s * 3.6
+                    if _km_h > 110 :
+                        _km_h = 110
 
                     Clock.schedule_once(lambda _: self.export_values(_km_h))
                     self.save_events(_km_h, _dt)
@@ -183,8 +185,6 @@ class MainScreen(Screen):
         
 # log events
     def export_values (self, _speed):
-        if _speed > 100 :
-            _speed = 100
         self.speed = _speed
     
     def save_events(self, velocidad, dt):
