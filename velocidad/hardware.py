@@ -12,7 +12,7 @@ try:
     from gpiozero import Device, LED, Button
     from gpiozero.pins.pigpio import PiGPIOFactory
 
-    Device.pin_factory = PiGPIOFactory()
+    #Device.pin_factory = PiGPIOFactory()
 
     GPIO_AVAILABLE = True
     log.info("gpiozero cargado correctamente")

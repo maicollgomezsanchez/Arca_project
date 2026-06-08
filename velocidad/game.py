@@ -90,8 +90,8 @@ class MainScreen(Screen):
         )
         self.thread_speed.start()
     
-        hardware.input_sensor.when_pressed = self.on_sensor
-        hardware.input_sensor.when_released  = self.off_sensor
+        #hardware.input_sensor.when_pressed = self.on_sensor
+        #hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
@@ -221,9 +221,11 @@ class MainScreen(Screen):
             hardware.log.error("Error escribiendo archivo:", e)
     
     def close_and_save_file(self):
-        self.no_pulse_start = None
-        self.decay_event.cancel()
-        self.decay_event = None
+        if self.decay_event:
+            self.no_pulse_start = None
+            self.decay_event.cancel()
+            self.decay_event = None
+        
         self._last = None
         self.speed = 0
         if not self.log_enabled or not self.log_filename: return
