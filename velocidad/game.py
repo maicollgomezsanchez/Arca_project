@@ -19,12 +19,19 @@ import platform
 
 SO = platform.system()
 if SO == "Windows":
+    LOG_DIR = "."
     try:
         import win32file
     except ImportError:
         win32file = None
 else:
+    LOG_DIR = "/home/pi/logs"
     win32file = None
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"ERROR creando {LOG_DIR}: {e}")
+        LOG_DIR = "."
 
 
 PERIMETRO = 35 # en metros
@@ -37,28 +44,6 @@ def window_setup():
     Window.fullscreen = False
     Window.show_cursor = False
     Window.release_all_keyboards()
-
-def export_to_usb(source_file, usb_drive):
-    try:
-        destination = os.path.join(usb_drive, os.path.basename(source_file))
-        shutil.copy2(source_file, destination)
-    except Exception as e:
-        hardware.log.warning(f"Error exportando archivo: {e}")
-
-def get_usb_drives():
-    drives = []
-    media_path = "/media/pi"
-
-    if not os.path.exists(media_path):
-        return drives
-
-    for item in os.listdir(media_path):
-        full_path = os.path.join(media_path, item)
-        if os.path.ismount(full_path):
-            drives.append(full_path)
-
-    return drives
-
 
 class MainScreen(Screen):
     speed = NumericProperty(0)
@@ -205,17 +190,17 @@ class MainScreen(Screen):
     def save_events(self, velocidad, dt):
         if not self.log_enabled:
             dt_name = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+            self.log_path = os.path.join(LOG_DIR, f"Evento_{dt_name}.txt")
             self.log_filename = f"Evento_{dt_name}.txt"
             self.log_enabled = True
-            hardware.log.info(f"Nuevo archivo creado: {self.log_filename}")
-            self.active_file = self.log_filename
+            hardware.log.info(f"Nuevo archivo creado: {self.log_path}")
 
         self.last_pulse_time = time.time()
         dt_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         linea = f"Fecha y Hora = {dt_name}, Velocidad = {int(velocidad)} km/h, Tiempo = {dt:.2f} s\n"
 
         try:
-            with open(self.log_filename, "a", buffering=1) as f:
+            with open(self.log_path, "a", buffering=1) as f:
                 f.write(linea)
         except Exception as e:
             hardware.log.error("Error escribiendo archivo:", e)
@@ -231,14 +216,13 @@ class MainScreen(Screen):
         if not self.log_enabled or not self.log_filename: return
 
         try:
-            os.chmod(self.log_filename, stat.S_IREAD)
+            os.chmod(self.log_path, stat.S_IREAD)
             hardware.log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
             self.active_file = ""
         except Exception as e:
             hardware.log.error("Error al cerrar archivo:", e)
 
         self.log_enabled = False
-        self.log_filename = None
 
 # nuevas pantallas
 
@@ -248,36 +232,41 @@ class ReusablePopup(Popup):
     on_confirm = ObjectProperty(None)
     confirm_mode = BooleanProperty(False)
 
+def export_to_usb(source_file, usb_drive):
+    try:
+        destination = os.path.join(usb_drive, os.path.basename(source_file))
+        shutil.copy2(source_file, destination)
+    except Exception as e:
+        hardware.log.warning(f"Error exportando archivo: {e}")
+
+def get_usb_drives():
+    drives = []
+    media_path = "/media/pi"
+
+    if not os.path.exists(media_path):
+        return drives
+
+    for item in os.listdir(media_path):
+        full_path = os.path.join(media_path, item)
+        if os.path.ismount(full_path):
+            drives.append(full_path)
+
+    return drives
+
 class FileListScreen(Screen):
-    def show_popup(self, title, message, on_confirm=None):
-        def _open(dt):
-            popup = Factory.ReusablePopup()
-            popup.title_text = title
-            popup.message = message
-            popup.confirm_mode = on_confirm is not None
-
-            # Si el popup tiene un botón OK, le asignamos la acción
-            if on_confirm:
-                popup.on_confirm = on_confirm
-
-            popup.open()
-
-        Clock.schedule_once(_open, 0)
   
     def on_pre_enter(self):
-        files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
-
-        # Limpiar lista
+        files = [ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")]
         self.ids.file_list.clear_widgets()
 
         # Crear botones por archivo
         for fname in files:
             btn = Button(
-                background_color= get_color_from_hex("#00ccff"),
+                background_color=get_color_from_hex("#00ccff"),
                 text=fname,
                 size_hint_y=None,
                 height=40,
-                on_release=lambda b, f=fname: self.open_file(f)
+                on_release=lambda b, f=fname: self.open_file(os.path.join(LOG_DIR, f))
             )
             self.ids.file_list.add_widget(btn)
 
@@ -290,31 +279,23 @@ class FileListScreen(Screen):
         usb_list = get_usb_drives()
         hardware.log.warning(f"USB detectados: {usb_list}")
         if not usb_list:
-            hardware.log.warning("No hay USB conectado")
-            self.show_popup(
-                "AVISO", 
-                "NO HAY USB CONECTADO"
-            )
+            self.show_popup("AVISO", "NO HAY USB CONECTADO")
             return
 
         usb = usb_list[0]
-        files = [f for f in os.listdir(".") if f.endswith(".txt")]
+        files = [ os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.endswith(".txt")]
 
         for f in files:
             export_to_usb(f, usb)
-        self.show_popup(
-            "AVISO", 
-            "EVENTOS EXPORTADOS" if files else " SIN EVENTOS"
-        )
+        self.show_popup("AVISO","EVENTOS EXPORTADOS" if files else "SIN EVENTOS")
     
     def borrar_archivos(self):
-        files = [f for f in os.listdir(".") if f.startswith("Evento_") and f.endswith(".txt")]
+        files = [os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")]
 
         if not files:
             self.show_popup("AVISO", "SIN EVENTOS")
             return
 
-        # Mostrar popup de confirmación
         self.show_popup(
             "AVISO",
             "¿DESEA ELIMINAR TODOS LOS EVENTOS?",
@@ -329,16 +310,31 @@ class FileListScreen(Screen):
                 os.remove(fname)
 
             except PermissionError:
-                self.show_popup("ERROR", f"ARCHIVO PROTEGIDO: {fname}")
+                self.show_popup("ERROR", f"ARCHIVO PROTEGIDO: {os.path.basename(fname)}")
                 continue
 
             except Exception as e:
-                self.show_popup("ERROR", f"NO SE HA ELIMINADO: {fname}")
+                self.show_popup("ERROR", f"NO SE HA ELIMINADO: {os.path.basename(fname)}")
                 continue
 
         # Actualizar lista visual
         self.ids.file_list.clear_widgets()
         #self.show_popup("AVISO", "EVENTOS ELIMINADOS")
+
+    def show_popup(self, title, message, on_confirm=None):
+        def _open(dt):
+            popup = Factory.ReusablePopup()
+            popup.title_text = title
+            popup.message = message
+            popup.confirm_mode = on_confirm is not None
+
+            # Si el popup tiene un botón OK, le asignamos la acción
+            if on_confirm:
+                popup.on_confirm = on_confirm
+
+            popup.open()
+
+        Clock.schedule_once(_open, 0)
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
