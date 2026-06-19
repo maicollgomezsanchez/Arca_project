@@ -53,7 +53,7 @@
 
 <SpeedMeterWithBG@RelativeLayout>:
     bg_source: ""
-    speed: 0   # ← propiedad necesaria
+    speed: 0
 
     Image:
         source: root.bg_source
@@ -68,7 +68,7 @@
         display_last: False
         subtick: 5
         label_font_size: 30
-        label: str(int(root.speed)) + " Km/h"   # ← ahora sí funciona
+        label: str(int(root.speed)) + " Km/h"
         value: root.speed
         cadran_color: get_color_from_hex("#00000000")
         sectors: (0, "#00000000")

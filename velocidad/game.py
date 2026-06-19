@@ -116,44 +116,41 @@ class MainScreen(Screen):
         self._last = None
         hardware.log.info("inicia sensor de velocidad")
         while self.running:
-            # Esperar flanco de subida
+            # ============================
+            # 1. ESPERAR FLANCO DE SUBIDA
+            # ============================
             while not get_RPM():
                 now_ = time.time()
-                # --- Manejo de ausencia prolongada de pulsos ---
                 if self.last_pulse_time:
                     elapsed = now_ - self.last_pulse_time
-                    # Timeout para cerrar archivo
+                    # ---- INICIAR DECAIMIENTO A LOS 3s ----
+                    if elapsed >= 3 and self.no_pulse_start is None:
+                        self.no_pulse_start = now_
+                        Clock.schedule_once(lambda _: self.start_decay(), 0)
+                    # ---- TIMEOUT A LOS 10s ----
                     if elapsed >= TIMEOUT:
+                        self.timed_out = True
                         self.last_pulse_time = None
                         if self.log_enabled:
                             hardware.log.info("cerrando por timeout")
                         self.close_and_save_file()
-                    # Inicio de decaimiento si pasan 3 segundos sin pulsos
-                    elif elapsed >= 3 and self.no_pulse_start is None:
-                        self.no_pulse_start = now_
-                        Clock.schedule_once(lambda _: self.start_decay(), 0)
-                else:
-                    # Si no hay pulsos registrados, iniciar contador de no_pulse_start
-                    if self.no_pulse_start is None and self.speed > 0:
-                        self.no_pulse_start = now_
-                        Clock.schedule_once(lambda _: self.start_decay(), 0)
-                # --- Salida si el sistema deja de correr ---
                 if not self.running:
                     if self.log_enabled:
                         self.close_and_save_file()
                     return
-
                 time.sleep(0.001)
-            # pulso detectado
+            # ============================
+            # 2. PULSO DETECTADO
+            # ============================
             _now = time.time()
             self.last_pulse_time = _now
-            # Si estaba desacelerando → cancelar decaimiento
+            self.timed_out = False
+            # Cancelar decaimiento si estaba activo
             if self.decay_event:
                 self.decay_event.cancel()
                 self.decay_event = None
                 self.no_pulse_start = None
-                self.initial_speed = self.speed 
-             # Calcular velocidad real
+            # Calcular velocidad real
             if self._last is not None:
                 _dt = _now - self._last
                 if _dt > 0:
@@ -162,9 +159,8 @@ class MainScreen(Screen):
 
                     Clock.schedule_once(lambda _: self.export_values(_km_h))
                     self.save_events(_km_h, _dt)
-
             self._last = _now
-
+            # Esperar flanco de bajada
             while get_RPM():
                 if not self.running:
                     if self.log_enabled:
@@ -184,16 +180,27 @@ class MainScreen(Screen):
             return False
         # Caida lineal suave hasta cero
         elapsed = time.time() - self.no_pulse_start
-        
         ratio = max(0, 1 - (elapsed / TIMEOUT))
         self.speed = self.initial_speed * ratio
-        # Si ya llegó a cero, detener
         if ratio == 0:
             self.decay_event = None
+            self.no_pulse_start = None
             return False
         return True
-        
 # log events
+    @mainthread
+    def close_and_save_file(self):
+        self._last = None       
+        if not self.log_enabled or not self.log_filename: 
+            return
+        try:
+            os.chmod(self.log_path, stat.S_IREAD)
+            hardware.log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
+            self.active_file = ""
+        except Exception as e:
+            hardware.log.error("Error al cerrar archivo:", e)
+        self.log_enabled = False
+
     @mainthread
     def export_values (self, _speed):
         self.speed = _speed
@@ -215,27 +222,6 @@ class MainScreen(Screen):
                 f.write(linea)
         except Exception as e:
             hardware.log.error("Error escribiendo archivo:", e)
-    
-    @mainthread
-    def close_and_save_file(self):
-        #if self.decay_event:
-        #    self.decay_event.cancel()
-        #    self.decay_event = None
-        
-        self.no_pulse_start = None
-        self._last = None
-        
-        if not self.log_enabled or not self.log_filename: 
-            return
-
-        try:
-            os.chmod(self.log_path, stat.S_IREAD)
-            hardware.log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
-            self.active_file = ""
-        except Exception as e:
-            hardware.log.error("Error al cerrar archivo:", e)
-
-        self.log_enabled = False
 
 # nuevas pantallas
 
