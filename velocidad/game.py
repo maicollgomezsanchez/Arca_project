@@ -76,8 +76,8 @@ class MainScreen(Screen):
         )
         self.thread_speed.start()
     
-        #hardware.input_sensor.when_pressed = self.on_sensor
-        #hardware.input_sensor.when_released  = self.off_sensor
+        hardware.input_sensor.when_pressed = self.on_sensor
+        hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False

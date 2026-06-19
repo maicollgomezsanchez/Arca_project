@@ -10,29 +10,84 @@ log = logging.getLogger(__name__)
 # Intentar cargar gpiozero
 try:
     from gpiozero import Button
-
     GPIO_AVAILABLE = True
     log.info("gpiozero cargado correctamente")
-
 except ImportError:
     GPIO_AVAILABLE = False
     log.warning("gpiozero NO disponible, usando modo simulado")
 
 
-# pines de entrada # header numeracion fisica
-PIN_INPUT_GPIO_4 = 4 # 7
-PIN_INPUT_EMERGENCY = 27  # 13
-PIN_INPUT_SENSOR = 17  # 11
-PIN_INPUT_GPIO_22 = 22 # 15
+# Pines físicos
+PIN_INPUT_GPIO_4 = 4      # pin 7
+PIN_INPUT_EMERGENCY = 27  # pin 13
+PIN_INPUT_SENSOR = 17     # pin 11
+PIN_INPUT_GPIO_22 = 22    # pin 15
 
-TIEMPO_REBOTE_SENSOR = 0.300 # 300 milisegundos
+TIEMPO_REBOTE_SENSOR = 0.300
 PULL_UP = True
 PULL_DOWN = False
 Pull = PULL_DOWN
 
+# Lista de pines válidos para el sensor
+SENSOR_PINS = [PIN_INPUT_SENSOR, PIN_INPUT_GPIO_4, PIN_INPUT_GPIO_22]
+
+# ---------------------------------------------------------
+#  SENSOR VIRTUAL: combina varios pines en un solo objeto
+# ---------------------------------------------------------
+class SensorVirtual:
+    def __init__(self, pins, pull_up, bounce):
+        self.buttons = []
+        self._when_pressed = None
+        self._when_released = None
+
+        for pin in pins:
+            try:
+                btn = Button(pin, pull_up=pull_up, bounce_time=bounce)
+                self.buttons.append(btn)
+                log.info(f"SensorVirtual: Pin {pin} inicializado")
+            except Exception as e:
+                log.error(f"SensorVirtual: Error en pin {pin}: {e}")
+
+        for btn in self.buttons:
+            btn.when_pressed = self._pressed
+            btn.when_released = self._released
+
+    def _pressed(self):
+        if self._when_pressed:
+            self._when_pressed()
+
+    def _released(self):
+        if self._when_released:
+            self._when_released()
+
+    @property
+    def when_pressed(self):
+        return self._when_pressed
+
+    @when_pressed.setter
+    def when_pressed(self, fn):
+        self._when_pressed = fn
+
+    @property
+    def when_released(self):
+        return self._when_released
+
+    @when_released.setter
+    def when_released(self, fn):
+        self._when_released = fn
+
+    def close(self):
+        for btn in self.buttons:
+            btn.close()
+        log.info("SensorVirtual: pines cerrados")
+
+
+# ---------------------------------------------------------
+#  INICIALIZACIÓN DE HARDWARE
+# ---------------------------------------------------------
 def check_pin_free(pin):
     if not GPIO_AVAILABLE:
-        return True  # En modo simulado, siempre OK
+        return True
 
     try:
         test_ = Button(pin)
@@ -45,26 +100,20 @@ def check_pin_free(pin):
 
 
 if GPIO_AVAILABLE:
-    if not all([
-        check_pin_free(PIN_INPUT_SENSOR),
-        check_pin_free(PIN_INPUT_EMERGENCY),
-        check_pin_free(PIN_INPUT_GPIO_4),
-        check_pin_free(PIN_INPUT_GPIO_22)
-    ]):
-        log.error("Error en los pines seleccionados")
-        raise SystemError
 
-    # Configurar pines reales
-    input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
-    input_sensor = Button(PIN_INPUT_SENSOR, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
-    input_gpio_4 = Button(PIN_INPUT_GPIO_4, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
-    input_gpio_22 = Button(PIN_INPUT_GPIO_22, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
+    # Revisar todos los pines
+    for pin in SENSOR_PINS + [PIN_INPUT_EMERGENCY]:
+        check_pin_free(pin)
+
+    # Sensor virtual que escucha varios pines
+    input_sensor = SensorVirtual(
+        pins=SENSOR_PINS,
+        pull_up=Pull,
+        bounce=TIEMPO_REBOTE_SENSOR
+    )
 
     def close_all_pins():
-        input_emergency.close()
         input_sensor.close()
-        input_gpio_4.close()
-        input_gpio_22.close()
         log.info("Pines cerrados correctamente")
 
 else:
