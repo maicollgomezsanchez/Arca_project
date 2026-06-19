@@ -9,6 +9,7 @@ import time, threading
 import hardware
 
 def window_setup():
+    Window.size = (1024, 600)
     Window.borderless = True
     Window.fullscreen = True
     Window.show_cursor = False
@@ -59,7 +60,7 @@ class viewMain(Widget):
         self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
         self.thread_claxon.start()
         # funciones de botones externos
-        hardware.input_sensor.when_released = self.off_sensor
+        '''hardware.input_sensor.when_released = self.off_sensor
         hardware.input_sensor.when_pressed = self.on_sensor
 
         hardware.input_emergency.when_pressed = self.close_popup
@@ -79,7 +80,7 @@ class viewMain(Widget):
             lambda dt: self._remote_paro(), 0
         )
         hardware.output_luces.on()
-        hardware.log.info("luces on!")
+        hardware.log.info("luces on!")'''
 
     def deinit(self):
         self.running = False

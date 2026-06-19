@@ -1,7 +1,7 @@
 from kivy.app import App
 from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ObjectProperty
 from kivy.lang import Builder
-from kivy.clock import Clock
+from kivy.clock import Clock,  mainthread
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
@@ -33,17 +33,18 @@ else:
         print(f"ERROR creando {LOG_DIR}: {e}")
         LOG_DIR = "."
 
-
+VELOCIDAD_MAXIMA = 120 # kilometros por hora
+PULSOS_POR_VUELTA = 4
 PERIMETRO = 35 # en metros
-TIMEOUT = 60 # segundos sin pulsos para cerrar archivo
-FRENADO = 0.02
+TIMEOUT = 10 # segundos sin pulsos para cerrar archivo
+FRENADO = 0.1
 
 def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
     Window.fullscreen = False
-    Window.show_cursor = False
-    Window.release_all_keyboards()
+    Window.show_cursor = True#False
+    #Window.release_all_keyboards()
 
 class MainScreen(Screen):
     speed = NumericProperty(0)
@@ -75,8 +76,8 @@ class MainScreen(Screen):
         )
         self.thread_speed.start()
     
-        hardware.input_sensor.when_pressed = self.on_sensor
-        hardware.input_sensor.when_released  = self.off_sensor
+        #hardware.input_sensor.when_pressed = self.on_sensor
+        #hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
@@ -86,10 +87,30 @@ class MainScreen(Screen):
         except Exception as e:
             hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
-            if self.log_enabled: self.close_and_save_file()
+            if self.log_enabled: 
+                #self.close_and_save_file()
+                Clock.schedule_once(lambda dt: self.close_and_save_file(), 0)
             hardware.log.info("Pines cerrados correctamente")
             hardware.close_all_pins()
 
+    def read_RPM(self):
+        return self.RPM_sensor
+        
+    def on_sensor(self):
+        if self.nextPage:
+            return
+        self.RPM_sensor = True
+    
+    def off_sensor(self):
+        if self.nextPage:
+            return
+        self.RPM_sensor = False
+
+    def simular_pulso(self):
+        self.RPM_sensor = True
+        time.sleep(0.01)
+        self.RPM_sensor = False
+    
     # hilo 
     def read_speed(self, get_RPM, _P_mts):
         self._last = None
@@ -97,39 +118,47 @@ class MainScreen(Screen):
         while self.running:
             # Esperar flanco de subida
             while not get_RPM():
-                if self.no_pulse_start is None:
-                    self.no_pulse_start = time.time()
-                    Clock.schedule_once(lambda _: self.start_decay())
-                if not self.running:
-                    if self.log_enabled:
-                        self.close_and_save_file()
-                    return
                 now_ = time.time()
-                # Cerrar archivo si pasan timeout sin pulsos o un solo pulso
+                # --- Manejo de ausencia prolongada de pulsos ---
                 if self.last_pulse_time:
-                    if (now_ - self.last_pulse_time) >= TIMEOUT:
+                    elapsed = now_ - self.last_pulse_time
+                    # Timeout para cerrar archivo
+                    if elapsed >= TIMEOUT:
                         self.last_pulse_time = None
                         if self.log_enabled:
                             hardware.log.info("cerrando por timeout")
                         self.close_and_save_file()
+                    # Inicio de decaimiento si pasan 3 segundos sin pulsos
+                    elif elapsed >= 3 and self.no_pulse_start is None:
+                        self.no_pulse_start = now_
+                        Clock.schedule_once(lambda _: self.start_decay(), 0)
+                else:
+                    # Si no hay pulsos registrados, iniciar contador de no_pulse_start
+                    if self.no_pulse_start is None and self.speed > 0:
+                        self.no_pulse_start = now_
+                        Clock.schedule_once(lambda _: self.start_decay(), 0)
+                # --- Salida si el sistema deja de correr ---
+                if not self.running:
+                    if self.log_enabled:
+                        self.close_and_save_file()
+                    return
+
                 time.sleep(0.001)
             # pulso detectado
             _now = time.time()
             self.last_pulse_time = _now
-
-            self.no_pulse_start = None
+            # Si estaba desacelerando → cancelar decaimiento
             if self.decay_event:
                 self.decay_event.cancel()
                 self.decay_event = None
-
+                self.no_pulse_start = None
+                self.initial_speed = self.speed 
+             # Calcular velocidad real
             if self._last is not None:
                 _dt = _now - self._last
-
                 if _dt > 0:
-                    _m_s = _P_mts / _dt
-                    _km_h = _m_s * 3.6
-                    if _km_h > 110 :
-                        _km_h = 110
+                    _m_s = _P_mts / (_dt * PULSOS_POR_VUELTA)
+                    _km_h = min(_m_s * 3.6, VELOCIDAD_MAXIMA)
 
                     Clock.schedule_once(lambda _: self.export_values(_km_h))
                     self.save_events(_km_h, _dt)
@@ -153,37 +182,19 @@ class MainScreen(Screen):
     def _decay_step(self, dt):
         if self.no_pulse_start is None:
             return False
-
+        # Caida lineal suave hasta cero
         elapsed = time.time() - self.no_pulse_start
-        # Caída lineal lenta
-        if elapsed < TIMEOUT:
-            remaining = TIMEOUT - elapsed
-            self.speed = max(0, (self.initial_speed * remaining) / TIMEOUT)
-            return True
-        # Timeout → velocidad cero
-        self.speed = 0
-        self.decay_event = None
-        return False
-
-    def read_RPM(self):
-        return self.RPM_sensor
         
-    def on_sensor(self):
-        if self.nextPage:
-            return
-        self.RPM_sensor = True
-    
-    def off_sensor(self):
-        if self.nextPage:
-            return
-        self.RPM_sensor = False
-
-    def simular_pulso(self):
-        self.RPM_sensor = True
-        time.sleep(0.01)
-        self.RPM_sensor = False
+        ratio = max(0, 1 - (elapsed / TIMEOUT))
+        self.speed = self.initial_speed * ratio
+        # Si ya llegó a cero, detener
+        if ratio == 0:
+            self.decay_event = None
+            return False
+        return True
         
 # log events
+    @mainthread
     def export_values (self, _speed):
         self.speed = _speed
     
@@ -205,15 +216,17 @@ class MainScreen(Screen):
         except Exception as e:
             hardware.log.error("Error escribiendo archivo:", e)
     
+    @mainthread
     def close_and_save_file(self):
-        if self.decay_event:
-            self.no_pulse_start = None
-            self.decay_event.cancel()
-            self.decay_event = None
+        #if self.decay_event:
+        #    self.decay_event.cancel()
+        #    self.decay_event = None
         
+        self.no_pulse_start = None
         self._last = None
-        self.speed = 0
-        if not self.log_enabled or not self.log_filename: return
+        
+        if not self.log_enabled or not self.log_filename: 
+            return
 
         try:
             os.chmod(self.log_path, stat.S_IREAD)
@@ -262,7 +275,7 @@ class FileListScreen(Screen):
         # Crear botones por archivo
         for fname in files:
             btn = Button(
-                background_color=get_color_from_hex("#00ccff"),
+                background_color=get_color_from_hex("#fff700"),
                 text=fname,
                 size_hint_y=None,
                 height=40,

@@ -9,10 +9,7 @@ log = logging.getLogger(__name__)
 
 # Intentar cargar gpiozero
 try:
-    from gpiozero import Device, LED, Button
-    from gpiozero.pins.pigpio import PiGPIOFactory
-
-    #Device.pin_factory = PiGPIOFactory()
+    from gpiozero import Button
 
     GPIO_AVAILABLE = True
     log.info("gpiozero cargado correctamente")
@@ -22,14 +19,16 @@ except ImportError:
     log.warning("gpiozero NO disponible, usando modo simulado")
 
 
-# Pines
-PIN_INPUT_GPIO_4 = 4
-PIN_INPUT_EMERGENCY = 17
-PIN_INPUT_SENSOR = 27
-PIN_INPUT_GPIO_22 = 22
+# pines de entrada # header numeracion fisica
+PIN_INPUT_GPIO_4 = 4 # 7
+PIN_INPUT_EMERGENCY = 27  # 13
+PIN_INPUT_SENSOR = 17  # 11
+PIN_INPUT_GPIO_22 = 22 # 15
 
-TIEMPO_REBOTE_SENSOR = 0.01
-
+TIEMPO_REBOTE_SENSOR = 0.300 # 300 milisegundos
+PULL_UP = True
+PULL_DOWN = False
+Pull = PULL_DOWN
 
 def check_pin_free(pin):
     if not GPIO_AVAILABLE:
@@ -56,10 +55,10 @@ if GPIO_AVAILABLE:
         raise SystemError
 
     # Configurar pines reales
-    input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=True, bounce_time=TIEMPO_REBOTE_SENSOR)
-    input_sensor = Button(PIN_INPUT_SENSOR, pull_up=True, bounce_time=TIEMPO_REBOTE_SENSOR)
-    input_gpio_4 = Button(PIN_INPUT_GPIO_4, pull_up=True, bounce_time=TIEMPO_REBOTE_SENSOR)
-    input_gpio_22 = Button(PIN_INPUT_GPIO_22, pull_up=True, bounce_time=TIEMPO_REBOTE_SENSOR)
+    input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
+    input_sensor = Button(PIN_INPUT_SENSOR, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
+    input_gpio_4 = Button(PIN_INPUT_GPIO_4, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
+    input_gpio_22 = Button(PIN_INPUT_GPIO_22, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
 
     def close_all_pins():
         input_emergency.close()

@@ -5,6 +5,7 @@
 #:set leventos "VER EVENTOS"
 #:set lexportar "EXPORTAR EVENTOS"
 #:set leliminar "ELIMINAR"
+#:set lfecha "AJUSTAR FECHA"
 
 
 <Button>
@@ -50,6 +51,29 @@
                     root.dismiss()
                     if root.on_confirm: root.on_confirm()
 
+<SpeedMeterWithBG@RelativeLayout>:
+    bg_source: ""
+    speed: 0   # ← propiedad necesaria
+
+    Image:
+        source: root.bg_source
+
+    SpeedMeter:
+        id: speedmeter
+        max: 280
+        tick: 20
+        start_angle: -135
+        end_angle: 135
+        display_first: False
+        display_last: False
+        subtick: 5
+        label_font_size: 30
+        label: str(int(root.speed)) + " Km/h"   # ← ahora sí funciona
+        value: root.speed
+        cadran_color: get_color_from_hex("#00000000")
+        sectors: (0, "#00000000")
+        needle_color: get_color_from_hex("#ff0000")
+
 # ---------------------------------------------------
 # GESTOR DE PANTALLAS
 # ---------------------------------------------------
@@ -66,8 +90,6 @@ ScreenManager:
 # ---------------------------------------------------
 <MainScreen>:
     canvas.before:
-        Color:
-            rgba: 1, 1, 1, .30
         Rectangle:
             pos: self.pos
             size: self.size
@@ -89,21 +111,9 @@ ScreenManager:
                 size_hint_y: 0.8
                 padding: dp(10)
 
-                SpeedMeter:
-                    id: speed
-                    max: 120
-                    tick: 10
-                    start_angle: -120
-                    end_angle: 120
-                    display_first: False
-                    display_last: False
-                    subtick: 5
-                    label_font_size: 30
-                    label: str(int(root.speed)) + ' Km/h'
-                    value: root.speed
-                    cadran_color: get_color_from_hex("#000000")
-                    sectors: (0, "#ffffff")
-                    needle_color: get_color_from_hex("#ff0000")
+                SpeedMeterWithBG:
+                    bg_source: "fondo_velocimetro.png"
+                    speed: root.speed
 
         BoxLayout:
             orientation: "vertical"
@@ -117,12 +127,12 @@ ScreenManager:
                 height: self.minimum_height
                 spacing: 10
 
-            #Button:
-            #    text: "Pulsos"
-            #    size_hint_x: None
-            #    width: dp(150)
-            #    on_release:
-            #        root.simular_pulso()
+            Button:
+                text: "Pulsos"
+                size_hint_x: None
+                width: dp(150)
+                on_release:
+                    root.simular_pulso()
 
             Widget:
                 size_hint_y: 1
@@ -141,8 +151,6 @@ ScreenManager:
 # ---------------------------------------------------
 <FileListScreen>:
     canvas.before:
-        Color:
-            rgba: 1, 1, 1, .30
         Rectangle:
             pos: self.pos
             size: self.size
@@ -171,6 +179,13 @@ ScreenManager:
                     spacing: 10
                     size_hint_y: None
                     height: self.minimum_height
+                
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 0.8
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
 
         BoxLayout:
             orientation: "vertical"
@@ -195,6 +210,11 @@ ScreenManager:
                     size_hint_y: None
                     height: 50
                     on_release: root.borrar_archivos()
+                Button:
+                    text: lfecha
+                    size_hint_y: None
+                    height: 50
+                    on_release: root.borrar_archivos()
 
             Widget:
                 size_hint_y: 1
@@ -210,8 +230,6 @@ ScreenManager:
 # ---------------------------------------------------
 <FileViewerScreen>:
     canvas.before:
-        Color:
-            rgba: 1, 1, 1, .30
         Rectangle:
             pos: self.pos
             size: self.size

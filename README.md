@@ -34,157 +34,7 @@ Para ejecutar este proyecto, necesitas tener instaladas las siguientes dependenc
 
 - **Python** 3.x
 - **Kivy** 2.x
-
-## actualizar sistema abrir consola ssh:
-
-```bash
-sudo raspi-config:
-   interface_options: all ok
-sudo apt-get update
-sudo apt-get upgrade
-
-python version 3.9.2
-#por si no se necesita el entorno virtual
-sudo apt install python3-kivy
-```
-## crear entorno virtual:
-
-```bash
-   #crear entorno virtual
-   python3 -m venv env
-   #entrar a entorno
-   source env/bin/activate
-   python3 -m pip install --upgrade pip setuptools virtualenv
-   pip install kivy
-   sudo apt-get install libgl1-mesa-glx libgles2-mesa libegl1-mesa libmtdev1
-   pip install gpiozero
-```
-instalando gpiozero
-
-```bash
-   sudo apt install python3-gpiozero
-   sudo apt install python-gpiozero
-```
-## cambiar el config.init de kivy:
-
-```bash
-cd sudo nano /home/pi/.kivy/config.ini 
-
-```
-reemplazar por  /kivy/config.ini
-
-## ocultar arranque:
-```bash
-   sudo nano /boot/firmware/cmdline.txt
-   console=serial0,115200 console=tty3 root=PARTUUID=xxxxxx-xx rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
-```
-
-## crear servicio:
-
-```bash
-sudo nano /etc/systemd/system/game.service
-
-[Unit]
-Description=Game_App
-After=pigpiod.service multi-user.target graphical.target
-Wants=graphical.target
-Requires=pigpiod.service
-
-[Service]
-User=pi
-ExecStart=/home/pi/env/src/game/dist/main
-WorkingDirectory=/home/pi/
-Environment=DISPLAY=:0
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
-Environment=XAUTHORITY=/home/pi/.Xauthority
-Restart=always
-RestartSec=1
-
-[Install]
-WantedBy=graphical.target
-
-```
-si no es un entorno virtual
-
-```bash
-[Unit]
-Description=Game_App
-After=multi-user.target graphical.target
-Wants=graphical.target
-
-[Service]
-User=pi
-WorkingDirectory=/home/pi/game
-ExecStart=/usr/bin/python3 /home/pi/game/game.py
-
-Environment=DISPLAY=:0
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
-Environment=XAUTHORITY=/home/pi/.Xauthority
-
-Restart=always
-RestartSec=1
-
-[Install]
-WantedBy=graphical.target
-
-```
-
-## comandos de servicio de auto ejecucion y encendido automatico
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable game.service
-sudo systemctl start game.service
-journalctl -u game.service --no-pager --lines=50
-sudo systemctl status game.service
-sudo systemctl stop game.service
-sudo systemctl disabled game.service
-```
-
-## crear ejecutable
-iniciar el entorno virtual, pararse en la carpeta del main
-
-```bash
-   pyinstaller --onefile  --windowed --add-data="game.kv:." --add-data="hardware.py:." game.py
-   or 
-   pyinstaller main.spec
-
-```
-
-## calibrando el tactil
-```bash
-sudo nano /boot/firmware/config.txt
-   display_rotate=0
-   hdmi_force_hotplug=1
-   hdmi_mode=87
-   hdmi_cvt=1024 600 60 3 0 0 0
-
-sudo nano /usr/share/X11/xorg.conf.d/40-libinput.conf 
-   Option "CalibrationMatrix" "1 0 0 0 1 0 0 0 1"
-   
-sudo cp /usr/share/X11/xorg.conf.d/40-libinput.conf /etc/X11/xorg.conf.d/
-
-sudo apt-get update
-sudo apt-get install xinput xinput-calibrator
-
-xinput list
-xinput_calibrator --device "xwayland-touch:14"
-sudo nanod /etc/X11/xorg.conf.d/99-calibration.conf         
-   Section "InputClass"
-      Identifier      "calibration"
-      MatchProduct    "xwayland-touch:14"
-      Option  "MinX"  "443"
-      Option  "MaxX"  "65764"
-      Option  "MinY"  "437"
-      Option  "MaxY"  "63787"
-      Option  "SwapXY"        "0" # unless it was already set to 1
-      Option  "InvertX"       "0"  # unless it was already set
-      Option  "InvertY"       "0"  # unless it was already set
-   EndSection
-```
-
+pi 
 deshabiitar volumenes extraibles pop up:
 To get rid of the popup message:
 Open File-manager
@@ -199,3 +49,63 @@ Right click on screen --> [Desktop Preferences]
 
 Remove tick from:
 [ ] Mounted Disks
+
+
+con la instalacion de bulleye:
+
+python version 3.9.2
+#por si no se necesita el entorno virtual
+sudo apt install python3-kivy
+
+
+creando servicio:
+```bash
+
+sudo nano /etc/systemd/system/game.service
+
+   [Unit]
+   Description=Game_App
+   After=multi-user.target graphical.target
+   Wants=graphical.target
+
+   [Service]
+   User=pi
+   WorkingDirectory=/home/pi/game
+   ExecStart=/usr/bin/python3 /home/pi/game/game.py
+
+   Environment=DISPLAY=:0
+   Environment=XDG_RUNTIME_DIR=/run/user/1000
+   Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+   Environment=XAUTHORITY=/home/pi/.Xauthority
+
+   Restart=always
+   RestartSec=1
+
+   [Install]
+   WantedBy=graphical.target
+
+sudo systemctl daemon-reload
+sudo systemctl enable game.service
+sudo systemctl start game.service
+```
+
+ocultar arranque:
+```bash
+   sudo nano /boot/firmware/cmdline.txt
+   console=serial0,115200 console=tty3 root=/dev/mmcblk0p2 rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
+```
+
+
+cambiar el config.init de kivy:
+
+```bash
+cd sudo nano /home/pi/.kivy/config.ini 
+
+```
+
+instalando gpiozero
+
+```bash
+   sudo apt install python3-gpiozero
+   sudo apt install python-gpiozero
+```
