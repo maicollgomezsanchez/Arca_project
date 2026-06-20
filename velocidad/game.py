@@ -43,8 +43,8 @@ FRENADO = 0.1
 def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
-    Window.fullscreen = False
-    #Window.show_cursor = False
+    Window.fullscreen = True
+    Window.show_cursor = False
     Window.release_all_keyboards()
 
 class MainScreen(Screen):
@@ -77,8 +77,8 @@ class MainScreen(Screen):
         )
         self.thread_speed.start()
     
-        #hardware.input_sensor.when_pressed = self.on_sensor
-        #hardware.input_sensor.when_released  = self.off_sensor
+        hardware.input_sensor.when_pressed = self.on_sensor
+        hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
