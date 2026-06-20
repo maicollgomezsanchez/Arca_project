@@ -8,74 +8,98 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 
-
 class DateTimePopup(BoxLayout):
 
     def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', spacing=10, padding=10, **kwargs)
+        super().__init__(orientation='vertical', spacing=5, padding=5, **kwargs)
 
         now = datetime.now()
 
+        # Tamaños optimizados para 800x400
+        spinner_font = 22
+        label_font = 24
+        button_font = 26
+        spinner_height = 45
+
+        from kivy.uix.gridlayout import GridLayout
+        grid = GridLayout(cols=2, spacing=4, size_hint=(1, 0.70))
+
         # Año
+        grid.add_widget(Label(text="Año", font_size=label_font))
         self.year_spinner = Spinner(
             text=str(now.year),
-            values=[str(y) for y in range(2020, 2035)],
-            size_hint=(1, 0.2)
+            values=[str(y) for y in range(2025, 2051)],
+            size_hint=(1, None),
+            height=spinner_height,
+            font_size=spinner_font
         )
+        grid.add_widget(self.year_spinner)
 
         # Mes
+        grid.add_widget(Label(text="Mes", font_size=label_font))
         self.month_spinner = Spinner(
             text=str(now.month),
             values=[str(m) for m in range(1, 13)],
-            size_hint=(1, 0.2)
+            size_hint=(1, None),
+            height=spinner_height,
+            font_size=spinner_font
         )
         self.month_spinner.bind(text=self.update_days)
+        grid.add_widget(self.month_spinner)
 
         # Día
+        grid.add_widget(Label(text="Día", font_size=label_font))
         self.day_spinner = Spinner(
             text=str(now.day),
             values=[str(d) for d in range(1, 32)],
-            size_hint=(1, 0.2)
+            size_hint=(1, None),
+            height=spinner_height,
+            font_size=spinner_font
         )
+        grid.add_widget(self.day_spinner)
 
         # Hora
+        grid.add_widget(Label(text="Hora", font_size=label_font))
         self.hour_spinner = Spinner(
-            text=str(now.hour),
+            text=f"{now.hour:02d}",
             values=[f"{h:02d}" for h in range(0, 24)],
-            size_hint=(1, 0.2)
+            size_hint=(1, None),
+            height=spinner_height,
+            font_size=spinner_font
         )
+        grid.add_widget(self.hour_spinner)
 
         # Minutos
+        grid.add_widget(Label(text="Minutos", font_size=label_font))
         self.minute_spinner = Spinner(
-            text=str(now.minute),
+            text=f"{now.minute:02d}",
             values=[f"{m:02d}" for m in range(0, 60)],
-            size_hint=(1, 0.2)
+            size_hint=(1, None),
+            height=spinner_height,
+            font_size=spinner_font
         )
+        grid.add_widget(self.minute_spinner)
 
-        # Botón guardar
-        save_btn = Button(text="Guardar", size_hint=(1, 0.3))
+        self.add_widget(grid)
+
+        # Botones
+        btn_layout = BoxLayout(size_hint=(1, 0.15), spacing=8)
+
+        save_btn = Button(text="Guardar", font_size=button_font)
         save_btn.bind(on_release=self.save_datetime)
 
-        # Añadir widgets
-        self.add_widget(Label(text="Año"))
-        self.add_widget(self.year_spinner)
+        exit_btn = Button(text="Salir", font_size=button_font)
+        exit_btn.bind(on_release=self.close_popup)
 
-        self.add_widget(Label(text="Mes"))
-        self.add_widget(self.month_spinner)
+        btn_layout.add_widget(save_btn)
+        btn_layout.add_widget(exit_btn)
 
-        self.add_widget(Label(text="Día"))
-        self.add_widget(self.day_spinner)
+        self.add_widget(btn_layout)
 
-        self.add_widget(Label(text="Hora"))
-        self.add_widget(self.hour_spinner)
-
-        self.add_widget(Label(text="Minutos"))
-        self.add_widget(self.minute_spinner)
-
-        self.add_widget(save_btn)
+    def close_popup(self, instance):
+        self.popup.dismiss()
 
     def update_days(self, instance, value):
-        """Actualiza los días según el mes seleccionado."""
         year = int(self.year_spinner.text)
         month = int(value)
         last_day = calendar.monthrange(year, month)[1]
@@ -97,29 +121,4 @@ class DateTimePopup(BoxLayout):
         comando = f"sudo date -s '{fecha} {hora}'"
         os.system(comando)
 
-        App.get_running_app().popup.dismiss()
-
-
-class MainApp(App):
-
-    def build(self):
-        layout = BoxLayout(orientation='vertical', padding=20)
-
-        btn = Button(text="Cambiar Fecha y Hora", size_hint=(1, 0.2))
-        btn.bind(on_release=self.open_popup)
-
-        layout.add_widget(btn)
-        return layout
-
-    def open_popup(self, instance):
-        content = DateTimePopup()
-        self.popup = Popup(
-            title="Configurar Fecha y Hora",
-            content=content,
-            size_hint=(0.8, 0.9)
-        )
-        self.popup.open()
-
-
-if __name__ == "__main__":
-    MainApp().run()
+        self.popup.dismiss()

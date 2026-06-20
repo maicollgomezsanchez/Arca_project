@@ -60,18 +60,20 @@
 
     SpeedMeter:
         id: speedmeter
-        max: 280
+        max: 80
         tick: 20
-        start_angle: -135
-        end_angle: 135
+        start_angle: -105
+        end_angle: 105
         display_first: False
         display_last: False
         subtick: 5
         label_font_size: 30
+        label_color: 
+            get_color_from_hex("#ff0000") if int(root.speed) > 60 else get_color_from_hex("#ffae00") if int(root.speed) > 40 else get_color_from_hex("#00ff00")
         label: str(int(root.speed)) + " Km/h"
         value: root.speed
-        cadran_color: get_color_from_hex("#00000000")
-        sectors: (0, "#00000000")
+        cadran_color: get_color_from_hex("#ffffff00")
+        sectors: (1, "#00000000")
         needle_color: get_color_from_hex("#ff0000")
 
 # ---------------------------------------------------
@@ -127,6 +129,12 @@ ScreenManager:
                 height: self.minimum_height
                 spacing: 10
 
+            
+            Button:
+                text: ""
+                size_hint: .1, None
+                size: dp(40), dp(40)
+                background_color: (get_color_from_hex("#ff0000ff") if root.RPM_sensor else get_color_from_hex("#ffff00ff"))
             #Button:
             #    text: "Pulsos"
             #    size_hint_x: None
@@ -214,7 +222,7 @@ ScreenManager:
                     text: lfecha
                     size_hint_y: None
                     height: 50
-                    on_release: root.borrar_archivos()
+                    on_release: root.fecha_y_hora()
 
             Widget:
                 size_hint_y: 1

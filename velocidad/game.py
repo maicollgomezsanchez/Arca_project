@@ -16,6 +16,7 @@ import stat
 import shutil
 import hardware
 import platform
+import hora
 
 SO = platform.system()
 if SO == "Windows":
@@ -33,7 +34,7 @@ else:
         print(f"ERROR creando {LOG_DIR}: {e}")
         LOG_DIR = "."
 
-VELOCIDAD_MAXIMA = 120 # kilometros por hora
+VELOCIDAD_MAXIMA = 80 # kilometros por hora
 PULSOS_POR_VUELTA = 4
 PERIMETRO = 35 # en metros
 TIMEOUT = 10 # segundos sin pulsos para cerrar archivo
@@ -43,20 +44,20 @@ def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
     Window.fullscreen = False
-    Window.show_cursor = False
+    #Window.show_cursor = False
     Window.release_all_keyboards()
 
 class MainScreen(Screen):
     speed = NumericProperty(0)
     active_file = StringProperty("")
     nextPage = BooleanProperty(False)
+    RPM_sensor = BooleanProperty(False)
     
     def on_pre_enter(self):
         self.nextPage = False
         
   #variables globales
     def init_vars(self):
-        self.RPM_sensor = False
         self.decay_event = None
         self.no_pulse_start = None
 
@@ -76,8 +77,8 @@ class MainScreen(Screen):
         )
         self.thread_speed.start()
     
-        hardware.input_sensor.when_pressed = self.on_sensor
-        hardware.input_sensor.when_released  = self.off_sensor
+        #hardware.input_sensor.when_pressed = self.on_sensor
+        #hardware.input_sensor.when_released  = self.off_sensor
 
     def deinit(self):
         self.running = False
@@ -108,9 +109,9 @@ class MainScreen(Screen):
 
     def simular_pulso(self):
         self.RPM_sensor = True
-        time.sleep(0.01)
+        Clock.schedule_once(self._reset_pulso, 0.1)
+    def _reset_pulso(self, dt):
         self.RPM_sensor = False
-    
     # hilo 
     def read_speed(self, get_RPM, _P_mts):
         self._last = None
@@ -253,7 +254,7 @@ def get_usb_drives():
     return drives
 
 class FileListScreen(Screen):
-  
+    
     def on_pre_enter(self):
         files = [ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")]
         self.ids.file_list.clear_widgets()
@@ -334,6 +335,20 @@ class FileListScreen(Screen):
             popup.open()
 
         Clock.schedule_once(_open, 0)
+    
+    def fecha_y_hora(self):
+        content = hora.DateTimePopup()
+        self.popup = Popup(
+            title="CONFIGURAR FECHA Y HORA",
+            content=content,
+            size_hint=(.65, .55),
+            auto_dismiss = False
+        )
+        content.popup = self.popup
+        self.popup.open()
+        
+    def probar_sensor(self):
+        pass        
 
 class FileViewerScreen(Screen):
     content = StringProperty("")

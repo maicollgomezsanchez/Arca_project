@@ -72,11 +72,12 @@ class SpeedMeter(Widget):
 
     label = StringProperty('')
     label_icon = StringProperty('')
+    label_color = ListProperty(get_color_from_hex("#ff0000"))
     label_icon_scale = NumericProperty(1, min=0, max=1)
     label_font_size = NumericProperty(15, min=1)
     value_font_size = NumericProperty(15, min=1)
 
-    label_radius_ratio = NumericProperty(0.3, min=-1, max=1)
+    label_radius_ratio = NumericProperty(-0.3, min=-1, max=1)
     label_angle_ratio = NumericProperty(0.5, min=0, max=1)
 
     #needle_color = StringProperty('#6bf2ff')
@@ -278,6 +279,7 @@ example using fractions of PI."""
 
     def _draw_label(self, *t):
         self._labelIG.clear()
+        add = self._labelIG.add
         if not self.label and not self.label_icon:
             return
 
@@ -297,7 +299,8 @@ example using fractions of PI."""
             th *= scale
         else:
             label = Label(text=self.label, markup=True, bold=True,
-                          font_size=self.label_font_size)
+                          font_size=self.label_font_size, color=self.label_color)
+            add(Color(rgba=self.label_color))
             label.refresh()
             t = label.texture
             tw, th = t.size

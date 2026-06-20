@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.properties import ObjectProperty
@@ -8,35 +5,25 @@ from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
 from functools import partial
-import logging, time, threading
-from kivy.lang import Builder
-Builder.load_file('game.kv')
+import time, threading
+import hardware
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-log = logging.getLogger(__name__)
-# pin de entrada
-PIN_EMERGENCY = 3
-PIN_SENSOR = 4
-# PINES de salida
-PIN_MARCHA = 17
-PIN_BOCINA = 27
-PIN_TRAGA_MONEDA = 22
-# TIEMPOS
-TIEMPO_SIRENA = 2  # Tiempo de duración de la sirena en segundos
-TIEMPO_1_SEC = 1
-TIEMPO_MAXIMO_ESPERA = 600  # mins en seg
+def window_setup():
+    Window.size = (1024, 600)
+    #Window.borderless = True
+   # Window.fullscreen = True
+    #Window.show_cursor = False
+    #Window.release_all_keyboards()
 
 
-class Popup_banner(Popup):  # Clase para la ventana emergente (popup)
+class Popup_banner(Popup):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def setup_text(self, new_text):  # Establece el texto que se muestra en el popup
+    def setup_text(self, new_text):
         self.ids.label_popup.text = new_text
 
-
+'''
 class Pin:
     def __init__(self, channel, mode="GPIO.OUT"):
         self.channel = channel
@@ -92,7 +79,7 @@ class Pin:
     def turn_off(self):
         #GPIO.output(self.channel, GPIO.LOW)
         log.warning(f"turn_off_pin {self.channel}")
-
+'''
 
 class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica del juego
     # Variables de estado y botones
@@ -111,7 +98,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.output_marcha.turn_off()
         self.power_buzzer()
         text = "ZETA DE EMERGENCIA PRESIONADO"
-        log.warning(text)
+        hardware.log.warning(text)
         self.enable_popup(text)
 
     # Activa la bocina
@@ -119,9 +106,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if self.thread_buzzer and self.thread_buzzer.is_alive():
             return
 
-        log.info("¡BUZZZZZ !!!!!")
+        hardware.log.info("¡BUZZZZZ !!!!!")
         self.thread_buzzer = threading.Thread(
-            target=self.output_bocina.toggle_pin, args=(TIEMPO_SIRENA,), daemon=True
+            target=self.output_bocina.toggle_pin, args=(hardware.TIEMPO_DURACION_SIRENA,), daemon=True
         )
         self.thread_buzzer.start()
 
@@ -129,10 +116,10 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def eating_coin(self):
         if self.thread_coin and self.thread_coin.is_alive():
             return
-        log.info("eating_coin")
+        hardware.log.info("eating_coin")
         self.thread_coin = threading.Thread(
-            target=self.output_moneda.toggle_pin,
-            args=(TIEMPO_1_SEC / 3, 3),
+            target=self.output_traga_ficha.toggle_pin,
+            args=(hardware.TIEMPO_ONE_SEC / 3, 3),
             daemon=True,
         )
         self.thread_coin.start()
@@ -167,7 +154,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if self.current_state in ("STOP", None):
             if self.decoin_button.state == "normal":
                 self.coin_button.disabled = True
-                log.info("COIN BUTTON BLOCKED")
+                hardware.log.info("COIN BUTTON BLOCKED")
             else:
                 self.coin_button.disabled = False
 
@@ -190,7 +177,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         new_time = max(0, current_time + increment)
         if label == "label_time_wait":
             if self.main_mode == "AUTO":
-                current_time = min(TIEMPO_MAXIMO_ESPERA, new_time)
+                current_time = min(hardware.TIEMPO_MAXIMO_ESPERA, new_time)
 
         else:
             current_time = new_time
@@ -212,16 +199,13 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         super().__init__(**kwargs)
         self.init_buttons()
         # inputs
-        self.input_emergency = Pin(PIN_EMERGENCY, "GPIO.IN")
-        self.input_emergency.init_cb(
-            cb_up=self.show_popup_emergency, cb_down=self.close_popup
-        )
+        self.input_emergency = hardware.input_emergency
         # outputs
-        self.output_bocina = Pin(PIN_BOCINA)
+        self.output_bocina = hardware.output_bocina
         self.thread_buzzer = None
         self.thread_coin = None
-        self.output_marcha = Pin(PIN_MARCHA)
-        self.output_moneda = Pin(PIN_TRAGA_MONEDA)
+        self.output_marcha = hardware.output_marcha
+        self.output_traga_ficha = hardware.output_traga_ficha
 
     # Inicializa los botones de la interfaz
     def init_buttons(self):
@@ -290,7 +274,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             return
 
         if state_select == "PAUSE":
-            log.info(f"pausado en modo: {self.main_mode}")
+            hardware.log.info(f"pausado en modo: {self.main_mode}")
             self.output_marcha.turn_off()
 
             self.start_button.disabled = False
@@ -323,7 +307,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         )
 
         if self.main_mode == "AUTO":
-            log.info("Conteo de espera en modo AUTO")
+            hardware.log.info("Conteo de espera en modo AUTO")
             self.clock_event = Clock.schedule_interval(self.update_wait_time, 1)
             return
 
@@ -331,7 +315,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.active_buzzer = True
         if self.active_buzzer:
             self.active_buzzer = False
-            log.info(f"Comienza el juego en {self.main_mode}")
+            hardware.log.info(f"Comienza el juego en {self.main_mode}")
             self.power_buzzer()
 
         self.clock_event = Clock.schedule_interval(self.update_travel_time, 1)
@@ -347,7 +331,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                     self.active_buzzer = False
                     self.power_buzzer()
 
-                log.info("Finaliza espera en modo AUTO inicia temporizador")
+                hardware.log.info("Finaliza espera en modo AUTO inicia temporizador")
                 self.clock_event.cancel()
                 self.clock_event = Clock.schedule_interval(self.update_travel_time, 1)
 
@@ -370,7 +354,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         # Si no es modo MANUAL y el contador llega a 0
         if self.main_mode != "MANUAL" and self.counter_travel == 0:
             self.label_time_travel = "00:00"
-            log.info(f"Finaliza en {self.main_mode}")
+            hardware.log.info(f"Finaliza en {self.main_mode}")
             if self.main_mode == "SEMI":
                 self.clean_all()
 
@@ -421,7 +405,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         }
         for mode, button in modes.items():
             button.state = "down" if self.main_mode == mode else "normal"
-        log.info(f"limpiando en modo {self.main_mode}")
+        hardware.log.info(f"limpiando en modo {self.main_mode}")
         # Acciones finales si el juego estaba activo
         if self.current_game:
             self.eating_coin()
@@ -450,21 +434,27 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Cierra el popup
     def close_popup(self, dt):
         if self.popup:
-            log.info(f"cerrando pop-up{self.text_popup}")
+            hardware.log.info(f"cerrando pop-up{self.text_popup}")
             self.popup.dismiss()
             self.popup = None
 
 
-# Clase principal de la aplicación Kivy
-class carruselApp(App):
+class gameApp(App):
     def build(self):
-        # Configura la ventana sin bordes
-        Window.borderless = False
-        # Descomentar para pantalla completa
-        Window.fullscreen = False
-        return viewMain()
+        window_setup()
+        self.app_widget = viewMain()
+        return self.app_widget
+
+    def on_stop(self):
+        self.app_widget.deinit()
 
 
-# Ejecuta la aplicación
 if __name__ == "__main__":
-    carruselApp().run()
+    try:
+        gameApp().run()
+    except Exception as e:
+        hardware.log.error(f"error de excepcion {e}")
+    except KeyboardInterrupt:
+        hardware.log.error("keyboard exit")
+    finally:
+        hardware.close_all_pins()

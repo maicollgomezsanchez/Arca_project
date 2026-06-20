@@ -96,7 +96,7 @@ ocultar arranque:
 ```bash
    sudo nano /boot/cmdline.txt
 
-   console=serial0,115200 console=tty3 root=/dev/mmcblk0p2 rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
+   console=serial0,115200 console=tty3 root=/dev/sda2 rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
 ```
 
 
@@ -113,3 +113,22 @@ instalando gpiozero
    sudo apt install python3-gpiozero
    sudo apt install python-gpiozero
 ```
+
+
+
+carrusel: 
+solo tiempo
+arrabca, toca bocina, acaba tiempo, toca bocina, tiempo.
+no automatico. configurar el tiempo. timepo, marcha, paro, pausa, cbocina.
+
+escalestri:
+vueltas sensor de entrada
+manual, automatico
+automatico: configurar numero de vueltas
+arranca con bocina, cuenta las vueltas,bocina, para,
+
+choque:
+manual, semi, auto
+tiempo,
+auto tiempo de espera
+bocina, marhca cuenta tiempo, bocinca, para, traga ficha (presionen el boton y parada, descarga ficha, ).
