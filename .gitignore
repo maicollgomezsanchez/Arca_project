@@ -28,3 +28,6 @@ out/
 
 # Archivos de configuración personales
 *.code-workspace
+velocidad/ISO/*.iso
+velocidad/ISO/*.img.xz
+*.zip
