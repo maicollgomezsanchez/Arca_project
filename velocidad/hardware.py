@@ -19,8 +19,8 @@ except ImportError:
 
 # Pines físicos
 PIN_INPUT_GPIO_4 = 4      # pin 7
-PIN_INPUT_EMERGENCY = 27  # pin 13
-PIN_INPUT_SENSOR = 17     # pin 11
+PIN_INPUT_GPIO_27 = 27  # pin 13
+PIN_INPUT_GPIO_17 = 17     # pin 11
 PIN_INPUT_GPIO_22 = 22    # pin 15
 
 TIEMPO_REBOTE_SENSOR = 0.300
@@ -29,7 +29,7 @@ PULL_DOWN = False
 Pull = PULL_DOWN
 
 # Lista de pines válidos para el sensor
-SENSOR_PINS = [PIN_INPUT_SENSOR, PIN_INPUT_GPIO_4, PIN_INPUT_GPIO_22]
+SENSOR_PINS = [PIN_INPUT_GPIO_17,PIN_INPUT_GPIO_27, PIN_INPUT_GPIO_4, PIN_INPUT_GPIO_22]
 
 # ---------------------------------------------------------
 #  SENSOR VIRTUAL: combina varios pines en un solo objeto
@@ -102,7 +102,7 @@ def check_pin_free(pin):
 if GPIO_AVAILABLE:
 
     # Revisar todos los pines
-    for pin in SENSOR_PINS + [PIN_INPUT_EMERGENCY]:
+    for pin in SENSOR_PINS + [PIN_INPUT_GPIO_27]:
         check_pin_free(pin)
 
     # Sensor virtual que escucha varios pines

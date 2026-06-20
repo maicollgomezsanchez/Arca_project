@@ -43,8 +43,8 @@ def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
     Window.fullscreen = False
-    Window.show_cursor = True#False
-    #Window.release_all_keyboards()
+    Window.show_cursor = False
+    Window.release_all_keyboards()
 
 class MainScreen(Screen):
     speed = NumericProperty(0)

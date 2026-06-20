@@ -53,9 +53,12 @@ Remove tick from:
 
 con la instalacion de bulleye:
 
+raspy con bulleye
+
+
 python version 3.9.2
-#por si no se necesita el entorno virtual
 sudo apt install python3-kivy
+
 
 
 creando servicio:
@@ -70,8 +73,8 @@ sudo nano /etc/systemd/system/game.service
 
    [Service]
    User=pi
-   WorkingDirectory=/home/pi/game
-   ExecStart=/usr/bin/python3 /home/pi/game/game.py
+   WorkingDirectory=/home/pi/Game
+   ExecStart=/usr/bin/python3 /home/pi/Game/game.py
 
    Environment=DISPLAY=:0
    Environment=XDG_RUNTIME_DIR=/run/user/1000
@@ -91,7 +94,8 @@ sudo systemctl start game.service
 
 ocultar arranque:
 ```bash
-   sudo nano /boot/firmware/cmdline.txt
+   sudo nano /boot/cmdline.txt
+
    console=serial0,115200 console=tty3 root=/dev/mmcblk0p2 rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
 ```
 
