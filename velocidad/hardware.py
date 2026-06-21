@@ -23,7 +23,7 @@ PIN_INPUT_GPIO_27 = 27  # pin 13
 PIN_INPUT_GPIO_17 = 17     # pin 11
 PIN_INPUT_GPIO_22 = 22    # pin 15
 
-TIEMPO_REBOTE_SENSOR = 0.300
+TIEMPO_REBOTE_SENSOR = 0.005 # 5 milisegundos
 PULL_UP = True
 PULL_DOWN = False
 Pull = PULL_DOWN
@@ -31,32 +31,31 @@ Pull = PULL_DOWN
 # Lista de pines válidos para el sensor
 SENSOR_PINS = [PIN_INPUT_GPIO_17,PIN_INPUT_GPIO_27, PIN_INPUT_GPIO_4, PIN_INPUT_GPIO_22]
 
-# ---------------------------------------------------------
-#  SENSOR VIRTUAL: combina varios pines en un solo objeto
-# ---------------------------------------------------------
 class SensorVirtual:
-    def __init__(self, pins, pull_up, bounce):
+    def __init__(self, pins, pull_up=True, bounce=0.05):
         self.buttons = []
         self._when_pressed = None
         self._when_released = None
+        self.last_pin = None  # opcional (para debug / SCADA)
 
         for pin in pins:
             try:
                 btn = Button(pin, pull_up=pull_up, bounce_time=bounce)
                 self.buttons.append(btn)
+                btn.when_pressed = lambda p=pin: self._pressed(p)
+                btn.when_released = lambda p=pin: self._released(p)
                 log.info(f"SensorVirtual: Pin {pin} inicializado")
             except Exception as e:
                 log.error(f"SensorVirtual: Error en pin {pin}: {e}")
 
-        for btn in self.buttons:
-            btn.when_pressed = self._pressed
-            btn.when_released = self._released
-
-    def _pressed(self):
+    def _pressed(self, pin):
+        self.last_pin = pin
+        log.info(f"SensorVirtual: ACTIVADO por pin {pin}")
         if self._when_pressed:
             self._when_pressed()
 
-    def _released(self):
+    def _released(self, pin):
+        log.info(f"SensorVirtual: DESACTIVADO por pin {pin}")
         if self._when_released:
             self._when_released()
 
@@ -102,7 +101,7 @@ def check_pin_free(pin):
 if GPIO_AVAILABLE:
 
     # Revisar todos los pines
-    for pin in SENSOR_PINS + [PIN_INPUT_GPIO_27]:
+    for pin in SENSOR_PINS:
         check_pin_free(pin)
 
     # Sensor virtual que escucha varios pines

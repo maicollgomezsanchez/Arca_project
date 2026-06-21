@@ -36,7 +36,7 @@ else:
 
 VELOCIDAD_MAXIMA = 80 # kilometros por hora
 PULSOS_POR_VUELTA = 4
-PERIMETRO = 35 # en metros
+PERIMETRO = (36 / PULSOS_POR_VUELTA) # en metros
 TIMEOUT = 10 # segundos sin pulsos para cerrar archivo
 FRENADO = 0.1
 
@@ -113,7 +113,7 @@ class MainScreen(Screen):
     def _reset_pulso(self, dt):
         self.RPM_sensor = False
     # hilo 
-    def read_speed(self, get_RPM, _P_mts):
+    def read_speed(self, get_RPM, Perimetro):
         self._last = None
         hardware.log.info("inicia sensor de velocidad")
         while self.running:
@@ -155,11 +155,11 @@ class MainScreen(Screen):
             if self._last is not None:
                 _dt = _now - self._last
                 if _dt > 0:
-                    _m_s = _P_mts / (_dt * PULSOS_POR_VUELTA)
-                    _km_h = min(_m_s * 3.6, VELOCIDAD_MAXIMA)
+                    mps = Perimetro / _dt
+                    kph = min((mps * 3.6), VELOCIDAD_MAXIMA)
 
-                    Clock.schedule_once(lambda _: self.export_values(_km_h))
-                    self.save_events(_km_h, _dt)
+                    Clock.schedule_once(lambda _: self.export_values(kph))
+                    self.save_events(kph, _dt)
             self._last = _now
             # Esperar flanco de bajada
             while get_RPM():
