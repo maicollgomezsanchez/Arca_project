@@ -37,8 +37,8 @@ else:
 VELOCIDAD_MAXIMA = 80 # kilometros por hora
 PULSOS_POR_VUELTA = 4
 PERIMETRO = (36 / PULSOS_POR_VUELTA) # en metros
-TIMEOUT = 10 # segundos sin pulsos para cerrar archivo
-FRENADO = 0.1
+TIMEOUT = 1.5 # segundos sin pulsos para cerrar archivo
+FRENADO = 0.01
 
 def window_setup():
     Window.size = (1024, 600)    
@@ -60,7 +60,7 @@ class MainScreen(Screen):
     def init_vars(self):
         self.decay_event = None
         self.no_pulse_start = None
-
+        self.simularPulsos = None
         # Control de archivo
         self.log_enabled = False
         self.log_filename = None
@@ -89,7 +89,7 @@ class MainScreen(Screen):
             hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
             if self.log_enabled: 
-                #self.close_and_save_file()
+                self.close_and_save_file()
                 Clock.schedule_once(lambda dt: self.close_and_save_file(), 0)
             hardware.log.info("Pines cerrados correctamente")
             hardware.close_all_pins()
@@ -108,8 +108,14 @@ class MainScreen(Screen):
         self.RPM_sensor = False
 
     def simular_pulso(self):
+        if self.simularPulsos:
+            self.simularPulsos.cancel()
+            self.simularPulsos = None
+        else:
+            self.simularPulsos = Clock.schedule_interval(self.simular_pulsos, 1.1)
+    def simular_pulsos(self, dt):
         self.RPM_sensor = True
-        Clock.schedule_once(self._reset_pulso, 0.1)
+        Clock.schedule_once(self._reset_pulso, 0.01)
     def _reset_pulso(self, dt):
         self.RPM_sensor = False
     # hilo 
@@ -124,11 +130,9 @@ class MainScreen(Screen):
                 now_ = time.time()
                 if self.last_pulse_time:
                     elapsed = now_ - self.last_pulse_time
-                    # ---- INICIAR DECAIMIENTO A LOS 3s ----
-                    if elapsed >= 3 and self.no_pulse_start is None:
+                    if elapsed > TIMEOUT and self.no_pulse_start is None:
                         self.no_pulse_start = now_
                         Clock.schedule_once(lambda _: self.start_decay(), 0)
-                    # ---- TIMEOUT A LOS 10s ----
                     if elapsed >= TIMEOUT:
                         self.timed_out = True
                         self.last_pulse_time = None
@@ -157,7 +161,6 @@ class MainScreen(Screen):
                 if _dt > 0:
                     mps = Perimetro / _dt
                     kph = min((mps * 3.6), VELOCIDAD_MAXIMA)
-
                     Clock.schedule_once(lambda _: self.export_values(kph))
                     self.save_events(kph, _dt)
             self._last = _now
@@ -179,11 +182,10 @@ class MainScreen(Screen):
     def _decay_step(self, dt):
         if self.no_pulse_start is None:
             return False
-        # Caida lineal suave hasta cero
         elapsed = time.time() - self.no_pulse_start
         ratio = max(0, 1 - (elapsed / TIMEOUT))
         self.speed = self.initial_speed * ratio
-        if ratio == 0:
+        if ratio <= 0.001:
             self.decay_event = None
             self.no_pulse_start = None
             return False

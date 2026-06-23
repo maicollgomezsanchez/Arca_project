@@ -23,24 +23,22 @@ PIN_INPUT_GPIO_27 = 27  # pin 13
 PIN_INPUT_GPIO_17 = 17     # pin 11
 PIN_INPUT_GPIO_22 = 22    # pin 15
 
-TIEMPO_REBOTE_SENSOR = 0.005 # 5 milisegundos
+TIEMPO_REBOTE_SENSOR = None
 PULL_UP = True
 PULL_DOWN = False
-Pull = PULL_DOWN
+Pull = PULL_UP
 
-# Lista de pines válidos para el sensor
 SENSOR_PINS = [PIN_INPUT_GPIO_17,PIN_INPUT_GPIO_27, PIN_INPUT_GPIO_4, PIN_INPUT_GPIO_22]
 
 class SensorVirtual:
-    def __init__(self, pins, pull_up=True, bounce=0.05):
+    def __init__(self, pins):
         self.buttons = []
         self._when_pressed = None
         self._when_released = None
-        self.last_pin = None  # opcional (para debug / SCADA)
 
         for pin in pins:
             try:
-                btn = Button(pin, pull_up=pull_up, bounce_time=bounce)
+                btn = Button(pin, pull_up=Pull, bounce_time=TIEMPO_REBOTE_SENSOR)
                 self.buttons.append(btn)
                 btn.when_pressed = lambda p=pin: self._pressed(p)
                 btn.when_released = lambda p=pin: self._released(p)
@@ -49,13 +47,10 @@ class SensorVirtual:
                 log.error(f"SensorVirtual: Error en pin {pin}: {e}")
 
     def _pressed(self, pin):
-        self.last_pin = pin
-        log.info(f"SensorVirtual: ACTIVADO por pin {pin}")
         if self._when_pressed:
             self._when_pressed()
 
     def _released(self, pin):
-        log.info(f"SensorVirtual: DESACTIVADO por pin {pin}")
         if self._when_released:
             self._when_released()
 
@@ -78,7 +73,6 @@ class SensorVirtual:
     def close(self):
         for btn in self.buttons:
             btn.close()
-        log.info("SensorVirtual: pines cerrados")
 
 
 # ---------------------------------------------------------
@@ -105,11 +99,7 @@ if GPIO_AVAILABLE:
         check_pin_free(pin)
 
     # Sensor virtual que escucha varios pines
-    input_sensor = SensorVirtual(
-        pins=SENSOR_PINS,
-        pull_up=Pull,
-        bounce=TIEMPO_REBOTE_SENSOR
-    )
+    input_sensor = SensorVirtual(pins=SENSOR_PINS)
 
     def close_all_pins():
         input_sensor.close()
