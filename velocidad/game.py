@@ -348,9 +348,6 @@ class FileListScreen(Screen):
         )
         content.popup = self.popup
         self.popup.open()
-        
-    def probar_sensor(self):
-        pass        
 
 class FileViewerScreen(Screen):
     content = StringProperty("")

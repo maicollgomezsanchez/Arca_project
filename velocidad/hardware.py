@@ -74,9 +74,7 @@ class SensorVirtual:
         for btn in self.buttons:
             btn.close()
 
-
 # ---------------------------------------------------------
-#  INICIALIZACIÓN DE HARDWARE
 # ---------------------------------------------------------
 def check_pin_free(pin):
     if not GPIO_AVAILABLE:
@@ -94,11 +92,8 @@ def check_pin_free(pin):
 
 if GPIO_AVAILABLE:
 
-    # Revisar todos los pines
     for pin in SENSOR_PINS:
         check_pin_free(pin)
-
-    # Sensor virtual que escucha varios pines
     input_sensor = SensorVirtual(pins=SENSOR_PINS)
 
     def close_all_pins():
@@ -106,7 +101,6 @@ if GPIO_AVAILABLE:
         log.info("Pines cerrados correctamente")
 
 else:
-    # Modo simulado
     input_emergency = True
     input_sensor = True
     input_gpio_4 = True
