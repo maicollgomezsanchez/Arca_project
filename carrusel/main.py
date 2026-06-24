@@ -45,23 +45,28 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
             hardware.close_all_pins()
-            
-    # lanza el pop-up de emergencia
-    def show_popup_emergency(self):
-        #self.output_marcha.turn_off()
-        #self.on_buzzer()
-        text = "ZETA DE EMERGENCIA PRESIONADO"
-        hardware.log.warning(text)
-        self.enable_popup(text)
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.init_buttons()
+        self.output_bocina = hardware.output_bocina
+        self.thread_buzzer = None
+        self.thread_coin = None
+        #hilo de bocina
+        self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
+        self.thread_claxon.start()
+        
+        hardware.input_emergency.when_pressed = self.close_popup
+        hardware.input_emergency.when_released = self.show_popup
 
  # bocina en caulquier momento
     def on_buzzer(self):
-        #self.output_bocina.on()
-        hardware.log.info("bocina on!")
+        self.output_bocina.on()
+        hardware.log.info(f"bocina {self.output_bocina.is_lit}")
 
     def off_buzzer(self):
-        #self.output_bocina.off()
-        hardware.log.info("bocina off!")
+        self.output_bocina.off()
+        hardware.log.info(f"bocina {self.output_bocina.is_lit}")
         
     def claxon_thread(self):
         hardware.log.info("iniciando hilo de bocina")
@@ -87,11 +92,11 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     
     def _coin_pulse_cycle(self, dt):
         if not self.pulse_on:
-            #hardware.output_traga_ficha.on()
+            hardware.output_traga_ficha.on()
             self.pulse_on = True
             hardware.log.info(f"comiendo ficha x {self.pulse_count + 1} vez")
         else:
-            #hardware.output_traga_ficha.off()
+            hardware.output_traga_ficha.off()
             self.pulse_on = False
             self.pulse_count += 1
             # Cuando termina el OFF contamos un pulso completo
@@ -168,16 +173,6 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.continuous_event.cancel()
             self.setup_time()
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.init_buttons()
-        self.output_bocina = hardware.output_bocina
-        self.thread_buzzer = None
-        self.thread_coin = None
-        #hilo de bocina
-        self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
-        self.thread_claxon.start()
-
     # Inicializa los botones de la interfaz
     def init_buttons(self):
         buttons = [
@@ -249,7 +244,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             #apagando marcha si esta encendido
             if hardware.output_marcha.is_lit:
                 hardware.output_marcha.off()
-                hardware.log.info("marcha apaga")
+                hardware.log.info(f"marcha {hardware.output_marcha.is_lit}")
 
             self.start_button.disabled = False
             self.pause_button.disabled = True
@@ -314,6 +309,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         # se enciende la salida de marcha y si se apaga por algo se vuelve a encender
         if not hardware.output_marcha.is_lit:
             hardware.output_marcha.on()
+            hardware.log.info(f"marcha {hardware.output_marcha.is_lit}")
+            
         # Actualizar contador según el modo
         self.counter_travel = max(
             0,
@@ -362,7 +359,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         #apagando marcha si esta encendido
         if hardware.output_marcha.is_lit:
             hardware.output_marcha.off()
-            hardware.log.info("marcha apaga")
+            hardware.log.info(f"marcha {hardware.output_marcha.is_lit}")
 
         # Habilitar botones
         for button in [
@@ -394,7 +391,31 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.on_buzzer()
             self.current_game = False
 
-    # Manejo de popups
+    # funciones de  pop up
+    def show_popup(self):
+        if hardware.output_marcha.is_lit:
+            hardware.output_marcha.off()
+            hardware.log.info(f"marcha {hardware.output_marcha.is_lit}")
+        self.on_buzzer()
+        Clock.schedule_once(self._open_popup, 0)
+
+    def close_popup(self):
+        if self.popup_enabled:
+            self.popup_enabled = False
+            self.current_state = hardware.STOP
+            Clock.schedule_once(self._dismiss_popup, 0)
+
+    def _open_popup(self, dt):
+        if not self.popup:
+            self.popup = Popup_banner()
+            self.popup.setup_text("EMERGENCIA PRESIONADA")
+            self.popup.open()
+
+    def _dismiss_popup(self, dt):
+        if self.popup:
+            self.popup.dismiss()
+            self.popup = None
+            
     def enable_popup(self, text: str, delay=0):
         self.open_popup(text)
         if delay != 0:

@@ -131,22 +131,36 @@ if GPIO_AVAILABLE:
     
 else:
     # Modo simulado
+    class Pin:
+        def __init__(self):
+            self.is_lit = None
+        
+        def on(self):
+            self.is_lit = True
+            return self.is_lit
+
+        def off(self):
+            self.is_lit = False
+            return self.is_lit
+        
+        
         # configuracion de pines salida
-    output_bocina = True
-    output_marcha = True
-    output_traga_ficha = True
-    output_luces = True
-    output_gpio_12 = True
+    output_bocina = Pin()
+    output_bocina = Pin()
+    output_marcha = Pin()
+    output_traga_ficha = Pin()
+    output_luces = Pin()
+    output_gpio_12 = Pin()
     # configuracion de pines entrada
-    input_emergency = True
-    input_sensor = True
-    input_gpio_4= True
-    input_gpio_22 = True
+    input_emergency = Pin()
+    input_sensor = Pin()
+    input_gpio_4= Pin()
+    input_gpio_22 = Pin()
     # configuracion de pines remotos
-    input_remote_marcha = True
-    input_remote_paro = True
-    input_remote_pausa = True
-    input_remote_bocina = True
+    input_remote_marcha = Pin()
+    input_remote_paro = Pin()
+    input_remote_pausa = Pin()
+    input_remote_bocina = Pin()
     
     def close_all_pins():
         log.info("Modo simulado: no hay pines que cerrar")
