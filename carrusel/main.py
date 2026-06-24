@@ -10,11 +10,10 @@ import hardware
 
 def window_setup():
     Window.size = (1024, 600)
-    #Window.borderless = True
-   # Window.fullscreen = True
+    Window.borderless = True
+    #Window.fullscreen = True
     #Window.show_cursor = False
-    #Window.release_all_keyboards()
-
+    Window.release_all_keyboards()
 
 class Popup_banner(Popup):
     def __init__(self, **kwargs):
@@ -22,64 +21,6 @@ class Popup_banner(Popup):
 
     def setup_text(self, new_text):
         self.ids.label_popup.text = new_text
-
-'''
-class Pin:
-    def __init__(self, channel, mode="GPIO.OUT"):
-        self.channel = channel
-        self.mode = mode
-        log.warning(f"init pin {self.channel} in {self.mode} mode")
-        """
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(True)
-        """
-        if self.mode == "GPIO.IN":
-            #GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            return
-        if self.mode == "GPIO.OUT":
-            #GPIO.setup(self.channel, GPIO.OUT)
-            self.turn_off()
-
-    def cleanup(self):
-        # GPIO.cleanup(self.channel)
-        log.warning(f"clean: pin_{self.channel}")
-
-    def init_cb(self, cb_up, cb_down=None):
-        if self.mode == "GPIO.IN":
-            log.warning(f"init callback up {self.channel}")
-            # GPIO.add_event_detect(self.channel, GPIO.RISING, callback=cb_up, bouncetime=200)  # Flanco de subida (LOW a HIGH)
-        if cb_down is not None:
-            # GPIO.add_event_detect(self.channel, GPIO.FALLING, callback=cb_down, bouncetime=200)  # Flanco de bajada (HIGH a LOW)
-            log.warning(f"init callback down {self.channel}")
-        else:
-            self.cb_on = True
-
-    def deinit_cb(self):
-        if self.cb_on:
-            # GPIO.remove_event_detect(self.channel)
-            log.warning(f"de-init_callback: {self.channel}")
-
-    def toggle_pin(self, delay, repeat=0):
-        if repeat == 0:
-            self.turn_on()
-            time.sleep(delay)
-            self.turn_off()
-            return
-        
-        while repeat > 0:
-            self.turn_on()
-            time.sleep(delay)
-            self.turn_off()
-            repeat -= 1
-
-    def turn_on(self):
-        #GPIO.output(self.channel, GPIO.HIGH)
-        log.warning(f"turn_on_pin {self.channel}")
-
-    def turn_off(self):
-        #GPIO.output(self.channel, GPIO.LOW)
-        log.warning(f"turn_off_pin {self.channel}")
-'''
 
 class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica del juego
     # Variables de estado y botones
@@ -138,13 +79,24 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 hardware.log.error(f"Error en claxon_thread: {e}")
                 self.off_buzzer()
 
-    # Simula el consumo de una moneda
+    # consumo de una moneda
     def eating_coin(self):
-        if self.thread_coin and self.thread_coin.is_alive():
-            return
-        hardware.log.info("eating_coin")
-        #debe enviar pulsos cada 300 ms durante 2 segundos
-        # Configura los tiempos de respaldo
+        self.pulse_count = 0
+        self.pulse_on = False
+        self.coin_event = Clock.schedule_interval(self._coin_pulse_cycle, hardware.TIEMPO_PULSOS_FICHA)
+    
+    def _coin_pulse_cycle(self, dt):
+        if not self.pulse_on:
+            #hardware.output_traga_ficha.on()
+            self.pulse_on = True
+            hardware.log.info(f"comiendo ficha x {self.pulse_count + 1} vez")
+        else:
+            #hardware.output_traga_ficha.off()
+            self.pulse_on = False
+            self.pulse_count += 1
+            # Cuando termina el OFF contamos un pulso completo
+            if self.pulse_count >= hardware.MAXIMO_PULSOS_FICHA:
+                self.coin_event.cancel()
 
     def setup_time(self):
         self.backup_label_wait = self.label_time_wait
@@ -219,7 +171,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.init_buttons()
-        
+        self.output_bocina = hardware.output_bocina
         self.thread_buzzer = None
         self.thread_coin = None
         #hilo de bocina
@@ -294,8 +246,10 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         if state_select == "PAUSE":
             hardware.log.info(f"pausado en modo: {self.main_mode}")
-            #self.output_marcha.turn_off()
-            hardware.log.info("marcha apaga")
+            #apagando marcha si esta encendido
+            if hardware.output_marcha.is_lit:
+                hardware.output_marcha.off()
+                hardware.log.info("marcha apaga")
 
             self.start_button.disabled = False
             self.pause_button.disabled = True
@@ -357,7 +311,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def update_travel_time(self, dt):
         if self.current_state != "START":
             return
-        #self.output_marcha.on()
+        # se enciende la salida de marcha y si se apaga por algo se vuelve a encender
+        if not hardware.output_marcha.is_lit:
+            hardware.output_marcha.on()
         # Actualizar contador según el modo
         self.counter_travel = max(
             0,
@@ -403,8 +359,10 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         Clock.unschedule(self.clock_event)
         self.current_state = "STOP"
         # apaga la marcha
-        hardware.log.info("marcha apaga")
-        #hardware.output_marcha.off()
+        #apagando marcha si esta encendido
+        if hardware.output_marcha.is_lit:
+            hardware.output_marcha.off()
+            hardware.log.info("marcha apaga")
 
         # Habilitar botones
         for button in [
@@ -451,7 +409,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.text_popup = text
         self.popup.open()
 
-    # Cierra el popup después de un retraso
+    # Cierra el popup e de un retraso
     def close_popup_after_delay(self, delay):
         Clock.schedule_once(self.close_popup, delay)
 
