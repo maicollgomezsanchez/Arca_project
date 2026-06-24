@@ -75,12 +75,6 @@ sudo nano /etc/systemd/system/game.service
    User=pi
    WorkingDirectory=/home/pi/Game
    ExecStart=/usr/bin/python3 /home/pi/Game/game.py
-
-   Environment=DISPLAY=:0
-   Environment=XDG_RUNTIME_DIR=/run/user/1000
-   Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
-   Environment=XAUTHORITY=/home/pi/.Xauthority
-
    Restart=always
    RestartSec=1
 

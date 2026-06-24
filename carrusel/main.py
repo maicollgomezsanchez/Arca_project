@@ -1,6 +1,6 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -85,44 +85,65 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Variables de estado y botones
     main_mode = None
     current_state = None
-    label_time_travel = ObjectProperty("05:00")  # Tiempo de viaje
-    label_time_wait = ObjectProperty("09:30")  # Tiempo automático
+    label_time_travel = StringProperty("00:10")  # Tiempo de viaje
+    label_time_wait = StringProperty("00:10")  # Tiempo automático
     clock_event = None  # Evento de reloj para actualizar el tiempo
     counter_travel = 0  # Contador de tiempo de viaje
     counter_wait = 0  # Contador de tiempo de espera
     popup = None  # Variable para manejar el popup
     current_game = None
+    running_claxon = True
+    sound_claxon = False
 
+    def deinit(self):
+        self.running = False
+        try:
+            self.claxon_thread.join(timeout=1)
+            hardware.log.info("Hilos detenidos correctamente")
+        except Exception as e:
+            hardware.log.error(f"Error al detener los hilos: {e}")
+        finally:
+            hardware.close_all_pins()
+            
     # lanza el pop-up de emergencia
     def show_popup_emergency(self):
-        self.output_marcha.turn_off()
-        self.power_buzzer()
+        #self.output_marcha.turn_off()
+        #self.on_buzzer()
         text = "ZETA DE EMERGENCIA PRESIONADO"
         hardware.log.warning(text)
         self.enable_popup(text)
 
-    # Activa la bocina
-    def power_buzzer(self):
-        if self.thread_buzzer and self.thread_buzzer.is_alive():
-            return
+ # bocina en caulquier momento
+    def on_buzzer(self):
+        #self.output_bocina.on()
+        hardware.log.info("bocina on!")
 
-        hardware.log.info("¡BUZZZZZ !!!!!")
-        self.thread_buzzer = threading.Thread(
-            target=self.output_bocina.toggle_pin, args=(hardware.TIEMPO_DURACION_SIRENA,), daemon=True
-        )
-        self.thread_buzzer.start()
+    def off_buzzer(self):
+        #self.output_bocina.off()
+        hardware.log.info("bocina off!")
+        
+    def claxon_thread(self):
+        hardware.log.info("iniciando hilo de bocina")
+        while self.running_claxon:
+            time.sleep(0.1)
+            try:
+                if self.sound_claxon:
+                    self.on_buzzer()
+                    hardware.log.info("sonando Bocina !!!")
+                    time.sleep(hardware.TIEMPO_DURACION_SIRENA)
+                    self.off_buzzer()
+                    self.sound_claxon = False
+
+            except Exception as e:
+                hardware.log.error(f"Error en claxon_thread: {e}")
+                self.off_buzzer()
 
     # Simula el consumo de una moneda
     def eating_coin(self):
         if self.thread_coin and self.thread_coin.is_alive():
             return
         hardware.log.info("eating_coin")
-        self.thread_coin = threading.Thread(
-            target=self.output_traga_ficha.toggle_pin,
-            args=(hardware.TIEMPO_ONE_SEC / 3, 3),
-            daemon=True,
-        )
-        self.thread_coin.start()
+        #debe enviar pulsos cada 300 ms durante 2 segundos
         # Configura los tiempos de respaldo
 
     def setup_time(self):
@@ -141,7 +162,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Gestiona los botones especiales como buzzer y moneda
     def special_buttons(self, button_id):
         actions = {
-            "buzzer": (self.power_buzzer),
+            "buzzer": (self.on_buzzer),
             "coin": (self.eating_coin),
         }
 
@@ -198,14 +219,12 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.init_buttons()
-        # inputs
-        self.input_emergency = hardware.input_emergency
-        # outputs
-        self.output_bocina = hardware.output_bocina
+        
         self.thread_buzzer = None
         self.thread_coin = None
-        self.output_marcha = hardware.output_marcha
-        self.output_traga_ficha = hardware.output_traga_ficha
+        #hilo de bocina
+        self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
+        self.thread_claxon.start()
 
     # Inicializa los botones de la interfaz
     def init_buttons(self):
@@ -275,7 +294,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         if state_select == "PAUSE":
             hardware.log.info(f"pausado en modo: {self.main_mode}")
-            self.output_marcha.turn_off()
+            #self.output_marcha.turn_off()
+            hardware.log.info("marcha apaga")
 
             self.start_button.disabled = False
             self.pause_button.disabled = True
@@ -311,35 +331,33 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.clock_event = Clock.schedule_interval(self.update_wait_time, 1)
             return
 
-        # Activar el buzzer si es necesario
-        self.active_buzzer = True
-        if self.active_buzzer:
-            self.active_buzzer = False
-            hardware.log.info(f"Comienza el juego en {self.main_mode}")
-            self.power_buzzer()
+        self.sound_claxon = True
+        Clock.schedule_once(self.start_travel_after_buzzer, 2)
 
+    def start_travel_after_buzzer(self, dt):
+        hardware.log.info(f"Comienza el juego en {self.main_mode}")
         self.clock_event = Clock.schedule_interval(self.update_travel_time, 1)
 
     # Actualiza el tiempo de espera (decrece)
     def update_wait_time(self, dt):
         if self.current_state == "START":
-            self.counter_wait = max(0, self.counter_wait - 1)
+            self.counter_wait = self.counter_wait - 1
             self.label_time_wait = self.time_to_lbl(self.counter_wait)
-
-            if self.counter_wait == 0:
-                if self.active_buzzer:
-                    self.active_buzzer = False
-                    self.power_buzzer()
-
+            if self.counter_wait <= 0:
+                # hace sonar la bocina por dos segundos y espera
                 hardware.log.info("Finaliza espera en modo AUTO inicia temporizador")
+                self.sound_claxon = True
                 self.clock_event.cancel()
-                self.clock_event = Clock.schedule_interval(self.update_travel_time, 1)
+                Clock.schedule_once(self.stop_claxon_and_continue, 2)
 
+    def stop_claxon_and_continue(self, dt):
+        self.clock_event = Clock.schedule_interval(self.update_travel_time, 1)
+        
     # Actualiza el tiempo de viaje
     def update_travel_time(self, dt):
         if self.current_state != "START":
             return
-        self.output_marcha.turn_on()
+        #self.output_marcha.on()
         # Actualizar contador según el modo
         self.counter_travel = max(
             0,
@@ -364,8 +382,13 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
                 self.clock_event.cancel()
                 self.current_state = "STOP"
-                self.power_buzzer()
-                self.init_counter()
+                #suena bocina
+                self.sound_claxon = True
+                # Programar continuacion en 2 segundos
+                Clock.schedule_once(self.stop_claxon_and_init, 2)
+
+    def stop_claxon_and_init(self, dt):
+        self.init_counter()
 
     # Limpia todos los estados y reinicia los temporizadores
     def clean_all(self):
@@ -380,7 +403,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         Clock.unschedule(self.clock_event)
         self.current_state = "STOP"
         # apaga la marcha
-        self.output_marcha.turn_off()
+        hardware.log.info("marcha apaga")
+        #hardware.output_marcha.off()
 
         # Habilitar botones
         for button in [
@@ -409,7 +433,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         # Acciones finales si el juego estaba activo
         if self.current_game:
             self.eating_coin()
-            self.power_buzzer()
+            self.on_buzzer()
             self.current_game = False
 
     # Manejo de popups
