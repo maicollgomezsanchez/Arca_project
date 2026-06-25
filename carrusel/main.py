@@ -1,6 +1,8 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import ObjectProperty, StringProperty
+from kivy.properties import StringProperty
+from kivy.uix.screenmanager import Screen
+from kivy.lang import Builder
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -8,6 +10,13 @@ from functools import partial
 import time, threading
 import hardware
 
+
+from kivy.uix.label import Label
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+
+
+        
 def window_setup():
     Window.size = (1024, 600)
     Window.borderless = True
@@ -22,7 +31,8 @@ class Popup_banner(Popup):
     def setup_text(self, new_text):
         self.ids.label_popup.text = new_text
 
-class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica del juego
+#class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica del juego
+class MainScreen(Screen):
     # Variables de estado y botones
     main_mode = None
     current_state = None
@@ -35,31 +45,96 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     current_game = None
     running_claxon = True
     sound_claxon = False
+    
+    def go_mode(self, mode):
+        self.main_mode = mode
+
+        self.ids.left_manager.current = "config"
+        self.build_config_screen()
+    
+    def go_back(self):
+        self.ids.left_manager.current = "modes"
+        
+        
+    def start(self):
+        self.state_press("START", "down")
+
+    def pause(self):
+        self.state_press("PAUSE", "down")
+
+    def build_config_screen(self):
+        container = self.ids.time_container
+        container.clear_widgets()
+
+        def create_display(text_prop, plus_id, minus_id):
+            box = BoxLayout(orientation="vertical")
+
+            lbl = Label(font_size=40)
+            lbl.bind(text=lambda instance, value: None)  # dummy (evita warnings)
+
+            def update_label(*args):
+                lbl.text = getattr(self, text_prop)
+
+            update_label()
+            self.bind(**{text_prop: lambda instance, value: update_label()})
+
+            controls = BoxLayout(size_hint_y=0.3)
+
+            btn_plus = Button(text="+")
+            btn_minus = Button(text="-")
+
+            btn_plus.bind(on_press=lambda x: self.on_button_press(plus_id))
+            btn_minus.bind(on_press=lambda x: self.on_button_press(minus_id))
+
+            controls.add_widget(btn_plus)
+            controls.add_widget(btn_minus)
+
+            box.add_widget(lbl)
+            box.add_widget(controls)
+
+            return box
+
+        if self.main_mode == "AUTO":
+            container.add_widget(
+                create_display("label_time_wait", "auto_+", "auto_-")
+            )
+            container.add_widget(
+                create_display("label_time_travel", "travel_+", "travel_-")
+            )
+
+        elif self.main_mode == "SEMI":
+            container.add_widget(
+                create_display("label_time_travel", "travel_+", "travel_-")
+            )
+
 
     def deinit(self):
         self.running = False
         try:
-            self.claxon_thread.join(timeout=1)
+            self.claxon_loop.join(timeout=1)
             hardware.log.info("Hilos detenidos correctamente")
         except Exception as e:
             hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
             hardware.close_all_pins()
     
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.init_buttons()
+        self.running = True
+        self.continuous_event = None
         self.output_bocina = hardware.output_bocina
         self.thread_buzzer = None
         self.thread_coin = None
         #hilo de bocina
-        self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
-        self.thread_claxon.start()
+        self.thread_claxon = threading.Thread(target=self.claxon_loop, daemon=True)
+        if not self.thread_claxon.is_alive():
+            self.thread_claxon.start()
         
-        hardware.input_emergency.when_pressed = self.close_popup
-        hardware.input_emergency.when_released = self.show_popup
+        #hardware.input_emergency.when_pressed = self.close_popup
+        #hardware.input_emergency.when_released = self.show_popup        
 
- # bocina en caulquier momento
+ # bocina en cualquier momento
     def on_buzzer(self):
         self.output_bocina.on()
         hardware.log.info(f"bocina {self.output_bocina.is_lit}")
@@ -68,7 +143,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.output_bocina.off()
         hardware.log.info(f"bocina {self.output_bocina.is_lit}")
         
-    def claxon_thread(self):
+    def claxon_loop(self):
         hardware.log.info("iniciando hilo de bocina")
         while self.running_claxon:
             time.sleep(0.1)
@@ -130,11 +205,11 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Maneja la acción de presionar el botón de "decoin"
     def decoin_press(self):
         if self.current_state in ("STOP", None):
-            if self.decoin_button.state == "normal":
-                self.coin_button.disabled = True
+            if self.ids.decoin_button.state == "normal":
+                self.ids.coin_button.disabled = True
                 hardware.log.info("COIN BUTTON BLOCKED")
             else:
-                self.coin_button.disabled = False
+                self.ids.coin_button.disabled = False
 
     # BOTONES DE SUBIR Y BAJAR CONTADORES
     def set_counters(self, id_button, dt):
@@ -173,36 +248,12 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.continuous_event.cancel()
             self.setup_time()
 
-    # Inicializa los botones de la interfaz
-    def init_buttons(self):
-        buttons = [
-            "start_button",
-            "pause_button",
-            "stop_button",
-            "coin_button",
-            "decoin_button",
-            "manual_button",
-            "semi_button",
-            "auto_button",
-        ]
-
-        for btn_id in buttons:
-            setattr(self, btn_id, self.ids[btn_id])
-
-        self.start_button.disabled = True
-        self.pause_button.disabled = True
-        self.coin_button.disabled = True
-
     # Cambia el modo de operación
     def mode_press(self, mode_select, mode_state):
         self.setup_time()
         self.main_mode = mode_select
         self.current_state = "STOP"
-        self.pause_button.disabled = True
-        self.start_button.disabled = True
 
-        if mode_state == "down":
-            self.start_button.disabled = False
 
     # Cambia el estado del sistema
     def state_press(self, state_select, state_value):
@@ -214,13 +265,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             return
 
         if state_select == "START":
-            self.manual_button.disabled = True
-            self.semi_button.disabled = True
-            self.auto_button.disabled = True
-            self.coin_button.disabled = True
-            self.start_button.disabled = True
-            self.pause_button.disabled = False
-            self.start_button.state = "normal"
+            self.ids.coin_button.disabled = True
 
             if self.current_state == "STOP":
                 self.setup_time()
@@ -245,12 +290,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             if hardware.output_marcha.is_lit:
                 hardware.output_marcha.off()
                 hardware.log.info(f"marcha {hardware.output_marcha.is_lit}")
-
-            self.start_button.disabled = False
-            self.pause_button.disabled = True
-            self.pause_button.state = "normal"
             self.current_state = "PAUSE"
-            Clock.unschedule(self.clock_event)
+            if self.clock_event:
+                self.clock_event.cancel()
             return
 
         raise ValueError("error states")
@@ -330,7 +372,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 self.clean_all()
 
             elif self.main_mode == "AUTO":
-                if self.decoin_button.state == "down":
+                if self.ids.decoin_button.state == "down":
                     self.eating_coin()
 
                 self.clock_event.cancel()
@@ -353,7 +395,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.backup_label_travel,
             self.backup_label_wait,
         )
-        Clock.unschedule(self.clock_event)
+        #Clock.unschedule(self.clock_event)
+        if self.clock_event:
+            self.clock_event.cancel()
         self.current_state = "STOP"
         # apaga la marcha
         #apagando marcha si esta encendido
@@ -362,28 +406,28 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             hardware.log.info(f"marcha {hardware.output_marcha.is_lit}")
 
         # Habilitar botones
-        for button in [
+        '''for button in [
             self.manual_button,
             self.semi_button,
             self.auto_button,
             self.start_button,
         ]:
-            button.disabled = False
+            button.disabled = False'''
 
-        self.start_button.state = "normal"
-        self.pause_button.disabled = True
+        #self.start_button.state = "normal"
+        #self.pause_button.disabled = True
 
         if self.decoin_button.state == "down":
             self.coin_button.disabled = False
 
         # Configurar estado de botones según el modo
-        modes = {
+        '''modes = {
             "AUTO": self.auto_button,
             "MANUAL": self.manual_button,
             "SEMI": self.semi_button,
         }
         for mode, button in modes.items():
-            button.state = "down" if self.main_mode == mode else "normal"
+            button.state = "down" if self.main_mode == mode else "normal"'''
         hardware.log.info(f"limpiando en modo {self.main_mode}")
         # Acciones finales si el juego estaba activo
         if self.current_game:
@@ -392,18 +436,15 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.current_game = False
 
     # funciones de  pop up
-    def show_popup(self):
-        if hardware.output_marcha.is_lit:
-            hardware.output_marcha.off()
-            hardware.log.info(f"marcha {hardware.output_marcha.is_lit}")
+    def show_popup(self, dt):
+        if self.clock_event:
+            self.clock_event.cancel()
+        hardware.log.warning("Emergencia presionada")
         self.on_buzzer()
         Clock.schedule_once(self._open_popup, 0)
 
-    def close_popup(self):
-        if self.popup_enabled:
-            self.popup_enabled = False
-            self.current_state = hardware.STOP
-            Clock.schedule_once(self._dismiss_popup, 0)
+    def close_popup(self, dt):
+        Clock.schedule_once(self._dismiss_popup, 0)
 
     def _open_popup(self, dt):
         if not self.popup:
@@ -415,46 +456,20 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if self.popup:
             self.popup.dismiss()
             self.popup = None
-            
-    def enable_popup(self, text: str, delay=0):
-        self.open_popup(text)
-        if delay != 0:
-            self.close_popup_after_delay(delay)
-
-    # Muestra un popup con el texto dado
-    def open_popup(self, text: str):
-        if not self.popup:
-            self.popup = Popup_banner()
-
-        self.popup.setup_text(text)
-        self.text_popup = text
-        self.popup.open()
-
-    # Cierra el popup e de un retraso
-    def close_popup_after_delay(self, delay):
-        Clock.schedule_once(self.close_popup, delay)
-
-    # Cierra el popup
-    def close_popup(self, dt):
-        if self.popup:
-            hardware.log.info(f"cerrando pop-up{self.text_popup}")
-            self.popup.dismiss()
-            self.popup = None
 
 
-class gameApp(App):
+class mainApp(App):
     def build(self):
         window_setup()
-        self.app_widget = viewMain()
-        return self.app_widget
+        return Builder.load_file("game.kv")
 
     def on_stop(self):
-        self.app_widget.deinit()
-
+        main_screen = self.root.get_screen("main")
+        main_screen.deinit()
 
 if __name__ == "__main__":
     try:
-        gameApp().run()
+        mainApp().run()
     except Exception as e:
         hardware.log.error(f"error de excepcion {e}")
     except KeyboardInterrupt:
