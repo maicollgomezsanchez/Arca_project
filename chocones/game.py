@@ -11,8 +11,8 @@ import hardware
 def window_setup():
     Window.size = (1024, 600)
     Window.borderless = True
-    #Window.fullscreen = True
-    #Window.show_cursor = False
+    Window.fullscreen = True
+    Window.show_cursor = False
     Window.release_all_keyboards()
 
 class Popup_banner(Popup):
@@ -55,8 +55,6 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Convierte el tiempo en segundos a formato de etiqueta (mm:ss)
     def time_to_lbl(self, time):
         return f"{time // 60:02d}:{time % 60:02d}"
-    
-    
     
     # funciones de  pop up
     def show_popup(self):
@@ -137,9 +135,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.thread_claxon = threading.Thread(target=self.claxon_loop, daemon=True)
         if not self.thread_claxon.is_alive():
             self.thread_claxon.start()
-    
-        #hardware.input_emergency.when_pressed = self.close_popup
-        #hardware.input_emergency.when_released = self.show_popup
+        
+        hardware.input_emergency.when_pressed = self.close_popup
+        hardware.input_emergency.when_released = self.show_popup
 
 # capa hardware
     def set_marcha(self, estado: bool):

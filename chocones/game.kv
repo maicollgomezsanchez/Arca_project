@@ -24,20 +24,7 @@
 #:set label_start 'MARCHA'
 #:set label_pause 'PAUSA'
 #:set label_stop 'PARO'
-#:set c_text '#222222'
-
-# Estilo para los layouts
-<BoxLayout>:
-    spacing: 10
-    padding: 5, 5
-
-<Button>:
-    padding: 10, 10
-    font_size: 40
-    color:  utils.get_color_from_hex(c_text if self.state == 'normal' else '#ffffff')
-    background_color: (0, 0, 0, 0)
-    halign: 'center'
-    valign: 'middle'
+#:set c_text '#333333'
 
 <Popup_banner>:
     auto_dismiss: False
@@ -65,6 +52,18 @@
             valign: 'middle'
 
 
+# Estilo para los layouts
+<BoxLayout>:
+    spacing: 10
+    padding: 9, 9
+
+<Button>:
+    padding: 9, 9
+    font_size: 40
+    color:  utils.get_color_from_hex(c_text if self.state == 'normal' else '#ffffff')
+    background_color: (0, 0, 0, 0)
+    halign: 'center'
+    valign: 'middle'
 
 # -------------------------
 # ESTILOS REUTILIZABLES
@@ -76,19 +75,19 @@
     text_size: None, None
     padding: 10, 10
     color: utils.get_color_from_hex(c_text)
-    font_size: 40
+    font_size: 35
     canvas.before:
         Color:
             rgba: utils.get_color_from_hex(c_label)
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [12]
+            radius: [15]
 
 
 <WhiteLabel@Label>:
     padding: 10, 10
-    font_size: 130
+    font_size: 100
     color: utils.get_color_from_hex(c_text)
     canvas.before:
         Color:
@@ -96,7 +95,7 @@
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [12]
+            radius: [15]
 
 <RoundButton@Button>:
     size_hint: None, None
@@ -178,14 +177,14 @@
             orientation: 'horizontal'
             size_hint_y: 0.6
             spacing: 10
-            padding: 10
+            padding: 5
 
             # -------------------------
             # COLUMNA TIEMPO VIAJE
             # -------------------------
             BoxLayout:
                 orientation: 'vertical'
-                spacing: 10
+                spacing: 5
 
                 LabelWithBg:
                     text: label_txt_viaje
@@ -196,12 +195,11 @@
 
                 BoxLayout:
                     size_hint_y: 0.4
-                    Widget:
 
                     BoxLayout:
                         size_hint_x: None
                         width: self.minimum_width
-                        spacing: 130
+                        spacing: 75
 
                         RoundButton:
                             text: "+"
@@ -213,14 +211,12 @@
                             on_press: root.on_button_press('travel_-')
                             on_release: root.on_button_release()
 
-                    Widget:  # espacio derecho
-
             # -------------------------
             # COLUMNA TIEMPO PARADA
             # -------------------------
             BoxLayout:
                 orientation: 'vertical'
-                spacing: 10
+                spacing: 5
 
                 LabelWithBg:
                     text: label_txt_parada
@@ -231,12 +227,11 @@
 
                 BoxLayout:
                     size_hint_y: 0.4
-                    Widget:
 
                     BoxLayout:
                         size_hint_x: None
                         width: self.minimum_width
-                        spacing: 130
+                        spacing: 75
 
                         RoundButton:
                             text: "+"
@@ -249,19 +244,16 @@
                             on_press: root.on_button_press('auto_-')
                             on_release:
                                 root.on_button_release()
-                    Widget:
-
-
 
             # Columna botones especiales
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_y: 1
+                spacing: 30
                 # Boton activar comer ficha
                 ToggleButton:
                     id: decoin_button
                     text: "DESACTIVAR\nDESCARGA" if decoin_button.state == 'normal' else "ACTIVAR\nDESCARGA"
-                    height: self.parent.height * 0.2
                     canvas.before:
                         Color:
                             rgba: utils.get_color_from_hex(c_btn if self.state == 'normal' else c_btn_p)
@@ -275,7 +267,6 @@
                 Button:
                     id: coin_button
                     text: 'COMER\nFICHAS' if decoin_button.state == 'normal' else ""
-                    height: self.parent.height * 0.2
                     canvas.before:
                         Color:
                             rgba:
@@ -292,7 +283,6 @@
                 # Boton bocina
                 Button:
                     text: "BOCINA"
-                    height: self.parent.height * 0.2
                     canvas.before:
                         Color:
                             rgba: utils.get_color_from_hex(c_btn)
