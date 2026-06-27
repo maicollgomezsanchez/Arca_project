@@ -118,10 +118,12 @@ ScreenManager:
                         size_hint_y: 0.3
 
                         ToggleButton:
+                            group: "mode"
                             text: "MARCHA"
                             on_press: root.start()
 
                         ToggleButton:
+                            group: "mode"
                             text: "PAUSA"
                             on_press: root.pause()
 
@@ -151,4 +153,4 @@ ScreenManager:
 
             Button:
                 text: "PARO"
-                on_press: root.state_press("STOP", "normal")
+                on_press: root.state_press("STOP")

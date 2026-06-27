@@ -69,7 +69,7 @@
         display_last: False
         subtick: 5
         label_font_size: 30
-        label_color: get_color_from_hex("#ff0000") if int(root.speed) > 60 else get_color_from_hex("#ffae00") if int(root.speed) > 40 else get_color_from_hex("#00ff00")
+        label_color: get_color_from_hex("#ff0000" if int(root.speed) > 60 else "#ffff00" if int(root.speed) > 40 else "#00ff00")
         label: str(int(root.speed)) + " Km/h"
         value: root.speed
         cadran_color: get_color_from_hex("#ffffff00")
@@ -132,7 +132,7 @@ ScreenManager:
                 text: ""
                 size_hint: .1, None
                 size: dp(40), dp(40)
-                background_color: get_color_from_hex("#ff0000ff") if root.RPM_sensor else get_color_from_hex("#ffff00ff")
+                background_color: get_color_from_hex("#ff0000ff" if root.RPM_sensor else "#ffff00ff")
             #Button:
             #    text: "Pulsos"
             #    size_hint_x: None

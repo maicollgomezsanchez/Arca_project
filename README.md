@@ -66,20 +66,22 @@ creando servicio:
 
 sudo nano /etc/systemd/system/game.service
 
-   [Unit]
-   Description=Game_App
-   After=multi-user.target graphical.target
-   Wants=graphical.target
+[Unit]
+Description=Game_App
+After=graphical.target
 
-   [Service]
-   User=pi
-   WorkingDirectory=/home/pi/Game
-   ExecStart=/usr/bin/python3 /home/pi/Game/game.py
-   Restart=always
-   RestartSec=1
+[Service]
+User=pi
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+WorkingDirectory=/home/pi/Game
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/bin/python3 /home/pi/Game/game.py
+Restart=always
+RestartSec=1
 
-   [Install]
-   WantedBy=graphical.target
+[Install]
+WantedBy=graphical.target
 
 sudo systemctl daemon-reload
 sudo systemctl enable game.service
@@ -90,8 +92,11 @@ ocultar arranque:
 ```bash
    sudo nano /boot/cmdline.txt
 
-   console=serial0,115200 console=tty3 root=/dev/sda2 rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0
+  console=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0 quiet vt.global_cursor_default=0 logo.nologo
 ```
+
+PARTUUID=b38ad6f5-02 _> barco
+PARTUUID=41130ed0-02 _>  chocones
 
 
 cambiar el config.init de kivy:

@@ -1,0 +1,358 @@
+#:import utils kivy.utils
+#:import Factory kivy.factory.Factory
+
+############ CONSTANTES #########
+#:set radius_default 25
+#:set color_timer '#ffffff'
+#:set color_timer_press '#aeaeaee2'
+#:set color_stop '#db1a1a'
+#:set color_stop_pressed '#7c0101e2'
+#:set color_start '#26c626'
+#:set color_start_presed '#033203e2'
+#:set color_pause '#ffff00'
+#:set color_pause_pressed '#4b4b00e2'
+#:set c_modos '#2929ff'
+#:set c_modos_p '#000063e2'
+#:set c_label '#ffffffb3'
+#:set c_btn '#ffffff'
+#:set c_btn_p '#646464e2'
+#:set c_dis '#834a4a00'
+#:set color_popup '#887700'
+#:set label_txt_viaje 'TIEMPO VIAJE'
+#:set label_txt_parada 'TIEMPO ESPERA'
+#:set title_popup '¡ALERTA!\nBOTON EMERGENCIA PRESIONADO'
+#:set label_start 'MARCHA'
+#:set label_pause 'PAUSA'
+#:set label_stop 'PARO'
+#:set c_text '#222222'
+
+# Estilo para los layouts
+<BoxLayout>:
+    spacing: 10
+    padding: 5, 5
+
+<Button>:
+    padding: 10, 10
+    font_size: 40
+    color:  utils.get_color_from_hex(c_text if self.state == 'normal' else '#ffffff')
+    background_color: (0, 0, 0, 0)
+    halign: 'center'
+    valign: 'middle'
+
+<Popup_banner>:
+    auto_dismiss: False
+    size_hint: 0.6, 0.2
+    title: ''
+    separator_height: 0
+    background_color: utils.get_color_from_hex(color_popup)
+
+    BoxLayout:
+        orientation: "vertical"
+        size: root.width, root.height
+
+        canvas.before:
+            Color:
+                rgba: utils.get_color_from_hex(color_popup)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Label:
+            id: label_popup
+            color: utils.get_color_from_hex('#000000')
+            text: title_popup
+            halign: 'center'
+            valign: 'middle'
+
+
+
+# -------------------------
+# ESTILOS REUTILIZABLES
+# -------------------------
+
+<LabelWithBg@Label>:
+    size_hint_y: None
+    height: self.texture_size[1] + 20
+    text_size: None, None
+    padding: 10, 10
+    color: utils.get_color_from_hex(c_text)
+    font_size: 40
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex(c_label)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [12]
+
+
+<WhiteLabel@Label>:
+    padding: 10, 10
+    font_size: 130
+    color: utils.get_color_from_hex(c_text)
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex(c_label)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [12]
+
+<RoundButton@Button>:
+    size_hint: None, None
+    size: self.height, self.height
+    font_size: 80
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex(color_timer)
+        RoundedRectangle:
+            size: self.size
+            pos: self.pos
+            radius: [radius_default]
+
+    on_press:
+        self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_timer_press)
+    on_release:
+        self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_timer)
+
+
+
+#################### VISTA PRINCIPAL ##############
+<viewMain>:
+    canvas.before:
+        Rectangle:
+            pos: self.pos
+            size: self.size
+            source: "fondo.jpeg"
+
+    BoxLayout:
+        orientation: 'vertical'
+        size: root.width, root.height
+
+        # Primera fila
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.2
+            BoxLayout:
+                ToggleButton:
+                    id: manual_button
+                    text: "MANUAL"
+                    group: "mode"
+                    on_press: root.mode_press(self.text)
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(c_modos_p if self.state == 'down' else c_modos)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
+            BoxLayout:
+                ToggleButton:
+                    id: semi_button
+                    text: "SEMI"
+                    group: "mode"
+                    on_press: root.mode_press(self.text)
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(c_modos_p if self.state == 'down' else c_modos)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
+            BoxLayout:
+                ToggleButton:
+                    id: auto_button
+                    text: "AUTO"
+                    group: "mode"
+                    on_press: root.mode_press(self.text)
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(c_modos_p if self.state == 'down' else c_modos)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
+
+        # Segunda fila
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.6
+            spacing: 10
+            padding: 10
+
+            # -------------------------
+            # COLUMNA TIEMPO VIAJE
+            # -------------------------
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: 10
+
+                LabelWithBg:
+                    text: label_txt_viaje
+
+                WhiteLabel:
+                    text: str(root.label_time_travel)
+                    size_hint_y: 0.5
+
+                BoxLayout:
+                    size_hint_y: 0.4
+                    Widget:
+
+                    BoxLayout:
+                        size_hint_x: None
+                        width: self.minimum_width
+                        spacing: 130
+
+                        RoundButton:
+                            text: "+"
+                            on_press: root.on_button_press('travel_+')
+                            on_release: root.on_button_release()
+
+                        RoundButton:
+                            text: "--"
+                            on_press: root.on_button_press('travel_-')
+                            on_release: root.on_button_release()
+
+                    Widget:  # espacio derecho
+
+            # -------------------------
+            # COLUMNA TIEMPO PARADA
+            # -------------------------
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: 10
+
+                LabelWithBg:
+                    text: label_txt_parada
+
+                WhiteLabel:
+                    text: str(root.label_time_wait)
+                    size_hint_y: 0.5
+
+                BoxLayout:
+                    size_hint_y: 0.4
+                    Widget:
+
+                    BoxLayout:
+                        size_hint_x: None
+                        width: self.minimum_width
+                        spacing: 130
+
+                        RoundButton:
+                            text: "+"
+                            on_press: root.on_button_press('auto_+')
+                            on_release:
+                                root.on_button_release()
+
+                        RoundButton:
+                            text: "--"
+                            on_press: root.on_button_press('auto_-')
+                            on_release:
+                                root.on_button_release()
+                    Widget:
+
+
+
+            # Columna botones especiales
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: 1
+                # Boton activar comer ficha
+                ToggleButton:
+                    id: decoin_button
+                    text: "DESACTIVAR\nDESCARGA" if decoin_button.state == 'normal' else "ACTIVAR\nDESCARGA"
+                    height: self.parent.height * 0.2
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(c_btn if self.state == 'normal' else c_btn_p)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
+                    on_press:
+                        root.decoin_press()
+                # Boton comer ficha
+                Button:
+                    id: coin_button
+                    text: 'COMER\nFICHAS' if decoin_button.state == 'normal' else ""
+                    height: self.parent.height * 0.2
+                    canvas.before:
+                        Color:
+                            rgba:
+                                utils.get_color_from_hex(c_btn if decoin_button.state == 'normal' else c_dis)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [30]
+                    on_press:
+                        self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn_p)
+                        root.eating_coin()
+                    on_release:
+                        self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn)
+                # Boton bocina
+                Button:
+                    text: "BOCINA"
+                    height: self.parent.height * 0.2
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(c_btn)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [30]
+                    on_press:
+                        self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn_p)
+                        root.sound_claxon = True
+                    on_release:
+                        self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn)
+        # Tercera fila
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.2
+            ToggleButton:
+                id: start_button
+                text: label_start
+                group: 'state'
+                color:  utils.get_color_from_hex(c_text if self.state == 'normal' else c_text)
+                disabled_color: utils.get_color_from_hex('#ffffff')
+                on_press:
+                    root.state_press('START')
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex(color_start_presed if self.disabled else  color_start)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [30]
+            # Boton pause
+            ToggleButton:
+                id: pause_button
+                text: label_pause
+                group: 'state'
+                color:  utils.get_color_from_hex(c_text if self.state == 'normal' else c_text)
+                disabled_color: utils.get_color_from_hex('#ffffff')
+                on_press:
+                    root.state_press('PAUSE')
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex(color_pause_pressed if self.disabled else color_pause)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [30]
+            # Boton stop
+            Button:
+                id: stop_button
+                text: label_stop
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex(color_stop)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [30]
+                on_press:
+                    root.state_press('STOP')
+                    self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_stop_pressed)
+                on_release:
+                    self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_stop)
