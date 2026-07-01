@@ -1,9 +1,8 @@
 import os
 import calendar
 from datetime import datetime
-from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.popup import Popup
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.spinner import Spinner
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -15,13 +14,11 @@ class DateTimePopup(BoxLayout):
 
         now = datetime.now()
 
-        # Tamaños optimizados para 800x400
         spinner_font = 22
         label_font = 24
         button_font = 26
         spinner_height = 45
 
-        from kivy.uix.gridlayout import GridLayout
         grid = GridLayout(cols=2, spacing=4, size_hint=(1, 0.70))
 
         # Año

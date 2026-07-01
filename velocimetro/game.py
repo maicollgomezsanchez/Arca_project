@@ -34,9 +34,10 @@ else:
         print(f"ERROR creando {LOG_DIR}: {e}")
         LOG_DIR = "."
 
+PERIMETRO = 28
 VELOCIDAD_MAXIMA = 80 # kilometros por hora
 PULSOS_POR_VUELTA = 4
-PERIMETRO = (36 / PULSOS_POR_VUELTA) # en metros
+DISTANCIA_ENTRE_PULSOS = (PERIMETRO / PULSOS_POR_VUELTA) # en metros
 TIMEOUT = 1.5 # segundos sin pulsos para cerrar archivo
 FRENADO = 0.01
 
@@ -72,11 +73,11 @@ class MainScreen(Screen):
         self.init_vars()
         self.thread_speed = threading.Thread(
             target=self.read_speed,
-            args=(self.read_RPM, PERIMETRO),
+            args=(self.read_RPM, DISTANCIA_ENTRE_PULSOS),
             daemon=True
         )
         self.thread_speed.start()
-    
+        #Clock.schedule_interval(self.simular_pulsos, 1)      
         hardware.input_sensor.when_pressed = self.on_sensor
         hardware.input_sensor.when_released  = self.off_sensor
 
@@ -292,36 +293,60 @@ class FileListScreen(Screen):
         self.show_popup("AVISO","EVENTOS EXPORTADOS" if files else "SIN EVENTOS")
     
     def borrar_archivos(self):
-        files = [os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")]
+        try:
+            files = [
+                os.path.join(LOG_DIR, f)
+                for f in os.listdir(LOG_DIR)
+                if f.startswith("Evento_") and f.endswith(".txt")
+            ]
 
-        if not files:
-            self.show_popup("AVISO", "SIN EVENTOS")
-            return
+            if not files:
+                self.show_popup("AVISO", "SIN EVENTOS")
+                return
 
-        self.show_popup(
-            "AVISO",
-            "¿DESEA ELIMINAR TODOS LOS EVENTOS?",
-            on_confirm=lambda: self._borrar_archivos_confirmado(files)
-        )
+            self.show_popup(
+                "AVISO",
+                "¿DESEA ELIMINAR TODOS LOS EVENTOS?",
+                on_confirm=lambda: self._borrar_archivos_confirmado(files)
+            )
 
-            
+        except Exception as e:
+            hardware.log.error(f"ERROR LEYENDO EVENTOS:\n{e}")
+            self.show_popup("ERROR", "ERROR LEYENDO EVENTOS")
+
+
     def _borrar_archivos_confirmado(self, files):
+        eliminados = 0
+        errores = []
         for fname in files:
             try:
-                os.chmod(fname, stat.S_IWRITE)
-                os.remove(fname)
-
-            except PermissionError:
-                self.show_popup("ERROR", f"ARCHIVO PROTEGIDO: {os.path.basename(fname)}")
-                continue
-
+                hardware.log.info(f"Eliminando: {fname}")
+                if os.path.exists(fname):
+                    if SO == "Windows":
+                        os.chmod(fname, stat.S_IWRITE)
+                    os.remove(fname)
+                    eliminados += 1
             except Exception as e:
-                self.show_popup("ERROR", f"NO SE HA ELIMINADO: {os.path.basename(fname)}")
-                continue
-
-        # Actualizar lista visual
-        self.ids.file_list.clear_widgets()
-        #self.show_popup("AVISO", "EVENTOS ELIMINADOS")
+                hardware.log.error(f"ERROR eliminando {fname}: {e}")
+                errores.append(os.path.basename(fname))
+        # Refrescar lista visual
+        try:
+            if "file_list" in self.ids:
+                self.ids.file_list.clear_widgets()
+        except Exception as e:
+            hardware.log.error(f"ERROR actualizando lista: {e}")
+        # Resultado final
+        if errores:
+            self.show_popup(
+                "ERROR",
+                f"SE ELIMINARON {eliminados} EVENTOS\n\n"
+                f"NO SE PUDIERON ELIMINAR {len(errores)}"
+            )
+        else:
+            self.show_popup(
+                "AVISO",
+                f"SE ELIMINARON {eliminados} EVENTOS"
+            )
 
     def show_popup(self, title, message, on_confirm=None):
         def _open(dt):
@@ -343,7 +368,7 @@ class FileListScreen(Screen):
         self.popup = Popup(
             title="CONFIGURAR FECHA Y HORA",
             content=content,
-            size_hint=(.65, .55),
+            size_hint=(.90, .70), # se aumenta tamao de ventana de hora
             auto_dismiss = False
         )
         content.popup = self.popup

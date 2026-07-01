@@ -101,10 +101,24 @@ if GPIO_AVAILABLE:
         log.info("Pines cerrados correctamente")
 
 else:
-    input_emergency = True
-    input_sensor = True
-    input_gpio_4 = True
-    input_gpio_22 = True
+    # Modo simulado
+    class Pin:
+        def __init__(self):
+            self.is_lit = None
+        
+        def on(self):
+            self.is_lit = True
+            return self.is_lit
+
+        def off(self):
+            self.is_lit = False
+            return self.is_lit
+
+    # configuracion de pines entrada
+    input_emergency = Pin()
+    input_sensor = Pin()
+    input_gpio_4= Pin()
+    input_gpio_22 = Pin()
 
     def close_all_pins():
         log.info("Modo simulado: no hay pines que cerrar")

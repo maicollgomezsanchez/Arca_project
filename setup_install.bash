@@ -50,9 +50,6 @@ Environment=XAUTHORITY=/home/pi/.Xauthority
 WorkingDirectory=/home/pi/Game
 
 ExecStartPre=/bin/sleep 5
-ExecStartPre=/bin/mkdir -p /home/pi/.kivy
-ExecStartPre=/bin/cp -f /home/pi/Game/config.ini /home/pi/.kivy/config.ini
-
 ExecStart=/usr/bin/python3 /home/pi/Game/game.py
 
 Restart=always
