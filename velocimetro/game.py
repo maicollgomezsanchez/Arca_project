@@ -47,8 +47,8 @@ setter_trigger = False
 def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
-#    Window.fullscreen = True
-#    Window.show_cursor = False
+    Window.fullscreen = True
+    Window.show_cursor = False
     Window.release_all_keyboards()
 
 class MainScreen(Screen):
@@ -88,7 +88,7 @@ class MainScreen(Screen):
             daemon=True
         )
         self.thread_speed.start()
-        Clock.schedule_interval(self.simular_pulsos, 1)
+        #Clock.schedule_interval(self.simular_pulsos, 1)
         hardware.input_sensor.when_pressed = self.on_sensor
         hardware.input_sensor.when_released  = self.off_sensor
     
