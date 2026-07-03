@@ -91,14 +91,6 @@ class MainScreen(Screen):
         Clock.schedule_interval(self.simular_pulsos, 1)
         hardware.input_sensor.when_pressed = self.on_sensor
         hardware.input_sensor.when_released  = self.off_sensor
-
-    def on_touch_move(self, touch):
-        if touch.grab_current is self:
-            if not self.collide_point(*touch.pos):
-                self.on_touch_up(touch)
-                touch.ungrab(self)
-            return True
-        return super().on_touch_move(touch)
     
     def deinit(self):
         self.running = False
@@ -284,15 +276,6 @@ def get_usb_drives():
 
 class FileListScreen(Screen):
     cButt = BooleanProperty(False)
-
-    def on_touch_move(self, touch):
-        if touch.grab_current is self:
-            if not self.collide_point(*touch.pos):
-                self.on_touch_up(touch)
-                touch.ungrab(self)
-            return True
-        return super().on_touch_move(touch)
-    
 
     def on_pre_enter(self):
         global setter_trigger
