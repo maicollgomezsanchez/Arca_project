@@ -55,6 +55,7 @@
 <SpeedMeterWithBG@RelativeLayout>:
     bg_source: ""
     speed: 0
+    needle: False
 
     Image:
         source: root.bg_source
@@ -74,7 +75,7 @@
         value: root.speed
         cadran_color: get_color_from_hex("#ffffff00")
         sectors: (1, "#00000000")
-        needle_color: get_color_from_hex("#ff0000")
+        needle_color: get_color_from_hex("#00ff00" if root.needle else "#ff0000")
 
 # ---------------------------------------------------
 # GESTOR DE PANTALLAS
@@ -116,6 +117,7 @@ ScreenManager:
                 SpeedMeterWithBG:
                     bg_source: "fondo_velocimetro.png"
                     speed: root.speed
+                    needle: root.needle
 
         BoxLayout:
             orientation: "vertical"
@@ -129,15 +131,15 @@ ScreenManager:
                 height: self.minimum_height
                 spacing: 10
             Button:
-                text: ""
-                size_hint: .1, None
-                size: dp(40), dp(40)
+                size_hint: .2, .1
                 background_color: get_color_from_hex("#ff0000ff" if root.RPM_sensor else "#ffff00ff")
+                on_release: 
+                    root.set_vel()
             #Button:
             #    text: "Pulsos"
             #    size_hint_x: None
             #    width: dp(150)
-            #    on_release: root.simular_pulso()
+            #    on_release: root.simular_pulso(self)
 
             Widget:
                 size_hint_y: 1
@@ -170,10 +172,12 @@ ScreenManager:
             orientation: "vertical"
             size_hint_x: 0.75
 
-            Label:
+            Button:
                 text: "Archivos disponibles"
                 font_size: 28
                 size_hint_y: 0.1
+                background_color: get_color_from_hex("#00ff00" if root.cButt else "#fff70000")
+                on_release: root.set_data()
 
             ScrollView:
                 size_hint_y: 0.9

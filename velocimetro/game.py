@@ -5,6 +5,7 @@ from kivy.clock import Clock,  mainthread
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
+from kivy.uix.boxlayout import BoxLayout
 from kivy.factory import Factory
 from kivy.uix.popup import Popup
 from speedmeter import SpeedMeter
@@ -34,18 +35,20 @@ else:
         print(f"ERROR creando {LOG_DIR}: {e}")
         LOG_DIR = "."
 
-PERIMETRO = 28
+#constantes
 VELOCIDAD_MAXIMA = 80 # kilometros por hora
-PULSOS_POR_VUELTA = 4
-DISTANCIA_ENTRE_PULSOS = (PERIMETRO / PULSOS_POR_VUELTA) # en metros
-TIMEOUT = 1.5 # segundos sin pulsos para cerrar archivo
+TIMEOUT = 8 # segundos sin pulsos para cerrar archivo
+TIMEOUT_DESACELERA = 3 # timeout animacion de desacelerar
 FRENADO = 0.01
+#globales
+distancia_entre_pulsos = 3.5 # en metros
+setter_trigger = False
 
 def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
-    Window.fullscreen = True
-    Window.show_cursor = False
+#    Window.fullscreen = True
+#    Window.show_cursor = False
     Window.release_all_keyboards()
 
 class MainScreen(Screen):
@@ -53,9 +56,17 @@ class MainScreen(Screen):
     active_file = StringProperty("")
     nextPage = BooleanProperty(False)
     RPM_sensor = BooleanProperty(False)
+    needle = BooleanProperty(False)
     
     def on_pre_enter(self):
+        global setter_trigger
         self.nextPage = False
+        self.needle = setter_trigger
+    
+    def set_vel(self):
+        global setter_trigger
+        setter_trigger = not setter_trigger
+        self.needle = setter_trigger 
         
   #variables globales
     def init_vars(self):
@@ -73,14 +84,22 @@ class MainScreen(Screen):
         self.init_vars()
         self.thread_speed = threading.Thread(
             target=self.read_speed,
-            args=(self.read_RPM, DISTANCIA_ENTRE_PULSOS),
+            args=(self.read_RPM,),
             daemon=True
         )
         self.thread_speed.start()
-        #Clock.schedule_interval(self.simular_pulsos, 1)      
+        Clock.schedule_interval(self.simular_pulsos, 1)
         hardware.input_sensor.when_pressed = self.on_sensor
         hardware.input_sensor.when_released  = self.off_sensor
 
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            if not self.collide_point(*touch.pos):
+                self.on_touch_up(touch)
+                touch.ungrab(self)
+            return True
+        return super().on_touch_move(touch)
+    
     def deinit(self):
         self.running = False
         try:
@@ -107,20 +126,19 @@ class MainScreen(Screen):
         if self.nextPage:
             return
         self.RPM_sensor = False
-
-    def simular_pulso(self):
-        if self.simularPulsos:
-            self.simularPulsos.cancel()
-            self.simularPulsos = None
-        else:
-            self.simularPulsos = Clock.schedule_interval(self.simular_pulsos, 1.1)
+#simulacion de pulsos
+    def simular_pulso(self, dt):
+        self.simular_pulsos(dt)
     def simular_pulsos(self, dt):
         self.RPM_sensor = True
         Clock.schedule_once(self._reset_pulso, 0.01)
     def _reset_pulso(self, dt):
         self.RPM_sensor = False
-    # hilo 
-    def read_speed(self, get_RPM, Perimetro):
+#######################
+# hilo principal
+#######################
+    def read_speed(self, get_RPM):
+        global distancia_entre_pulsos
         self._last = None
         hardware.log.info("inicia sensor de velocidad")
         while self.running:
@@ -160,7 +178,7 @@ class MainScreen(Screen):
             if self._last is not None:
                 _dt = _now - self._last
                 if _dt > 0:
-                    mps = Perimetro / _dt
+                    mps = distancia_entre_pulsos / _dt
                     kph = min((mps * 3.6), VELOCIDAD_MAXIMA)
                     Clock.schedule_once(lambda _: self.export_values(kph))
                     self.save_events(kph, _dt)
@@ -184,7 +202,7 @@ class MainScreen(Screen):
         if self.no_pulse_start is None:
             return False
         elapsed = time.time() - self.no_pulse_start
-        ratio = max(0, 1 - (elapsed / TIMEOUT))
+        ratio = max(0, 1 - (elapsed / TIMEOUT_DESACELERA))
         self.speed = self.initial_speed * ratio
         if ratio <= 0.001:
             self.decay_event = None
@@ -257,8 +275,12 @@ def get_usb_drives():
     return drives
 
 class FileListScreen(Screen):
-    
+    cButt = BooleanProperty(False)
+
     def on_pre_enter(self):
+        global setter_trigger
+        self.cButt = setter_trigger
+
         files = [ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")]
         self.ids.file_list.clear_widgets()
 
@@ -373,6 +395,45 @@ class FileListScreen(Screen):
         )
         content.popup = self.popup
         self.popup.open()
+
+    def set_data(self):
+        if not self.cButt: 
+            return
+
+        layout = BoxLayout(
+            orientation='vertical',
+            spacing=30,
+            padding=30
+        )
+        popup = Popup(           
+            title='',
+            title_size=0,
+            content=layout,
+            size_hint=(0.5, 0.5),
+            auto_dismiss=True,
+            separator_height=0
+        )
+        for valor in (9, 7, 3.5):
+            btn = Button(
+                text=str(valor),
+                size_hint=(0.6, None),
+                height=60,
+                pos_hint={"center_x": 0.5}
+            )
+            btn.bind(
+                on_release=lambda instance, v=valor: self.choise_value(v, popup)
+            )
+            layout.add_widget(btn)
+        popup.open()
+
+    def choise_value(self, valor, popup):
+        global distancia_entre_pulsos, setter_trigger
+        setter_trigger = False
+        #actualiza color de boton
+        self.cButt = False
+        distancia_entre_pulsos = valor
+        hardware.log.warning(f"nueva distancia {distancia_entre_pulsos}" )
+        popup.dismiss()
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
