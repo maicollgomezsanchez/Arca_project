@@ -38,7 +38,7 @@ else:
 #constantes
 VELOCIDAD_MAXIMA = 80 # kilometros por hora
 TIMEOUT = 8 # segundos sin pulsos para cerrar archivo
-TIMEOUT_DESACELERA = 3 # timeout animacion de desacelerar
+TIMEOUT_DESACELERA = 1.5 # timeout animacion de desacelerar
 FRENADO = 0.01
 #globales
 distancia_entre_pulsos = 3.5 # en metros
@@ -87,8 +87,7 @@ class MainScreen(Screen):
             args=(self.read_RPM,),
             daemon=True
         )
-        self.thread_speed.start()
-        #Clock.schedule_interval(self.simular_pulsos, 1)
+        self.thread_speed.start()        
         hardware.input_sensor.when_pressed = self.on_sensor
         hardware.input_sensor.when_released  = self.off_sensor
     
@@ -141,7 +140,7 @@ class MainScreen(Screen):
                 now_ = time.time()
                 if self.last_pulse_time:
                     elapsed = now_ - self.last_pulse_time
-                    if elapsed > TIMEOUT and self.no_pulse_start is None:
+                    if elapsed > TIMEOUT_DESACELERA and self.no_pulse_start is None:
                         self.no_pulse_start = now_
                         Clock.schedule_once(lambda _: self.start_decay(), 0)
                     if elapsed >= TIMEOUT:
@@ -194,7 +193,7 @@ class MainScreen(Screen):
         if self.no_pulse_start is None:
             return False
         elapsed = time.time() - self.no_pulse_start
-        ratio = max(0, 1 - (elapsed / TIMEOUT_DESACELERA))
+        ratio = max(0, 1 - (elapsed/3))
         self.speed = self.initial_speed * ratio
         if ratio <= 0.001:
             self.decay_event = None
