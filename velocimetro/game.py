@@ -253,6 +253,14 @@ class ReusablePopup(Popup):
     on_confirm = ObjectProperty(None)
     confirm_mode = BooleanProperty(False)
 
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            if not self.collide_point(*touch.pos):
+                self.on_touch_up(touch)
+                touch.ungrab(self)
+            return True
+        return super().on_touch_move(touch)
+    
 def export_to_usb(source_file, usb_drive):
     try:
         destination = os.path.join(usb_drive, os.path.basename(source_file))
@@ -276,6 +284,15 @@ def get_usb_drives():
 
 class FileListScreen(Screen):
     cButt = BooleanProperty(False)
+
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            if not self.collide_point(*touch.pos):
+                self.on_touch_up(touch)
+                touch.ungrab(self)
+            return True
+        return super().on_touch_move(touch)
+    
 
     def on_pre_enter(self):
         global setter_trigger

@@ -8,7 +8,15 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 
 class DateTimePopup(BoxLayout):
-
+    
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            if not self.collide_point(*touch.pos):
+                self.on_touch_up(touch)
+                touch.ungrab(self)
+            return True
+        return super().on_touch_move(touch)
+    
     def __init__(self, **kwargs):
         super().__init__(orientation='vertical', spacing=5, padding=5, **kwargs)
 
