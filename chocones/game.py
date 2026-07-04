@@ -1,6 +1,6 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import ObjectProperty, StringProperty
+from kivy.properties import ObjectProperty, StringProperty, BooleanProperty
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -54,52 +54,28 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
     # Convierte el tiempo en segundos a formato de etiqueta (mm:ss)
     def time_to_lbl(self, time):
-        return f"{time // 60:02d}:{time % 60:02d}"
+        return f"{time % 3600 // 60:02d}:{time % 60:02d}"
     
     # funciones de  pop up
     def show_popup(self):
-        self.set_marcha(False)
+        self.clean_all()
         Clock.schedule_once(self._open_popup, 0)
 
     def close_popup(self):
         if self.popup_enabled:
             self.popup_enabled = False
-            self.state_button_selected = hardware.STOP
             Clock.schedule_once(self._dismiss_popup, 0)
 
     def _open_popup(self, dt):
         if not self.popup:
+            self.popup_enabled = True
             self.popup = Popup_banner()
-            self.popup.setup_text("EMERGENCIA PRESIONADA")
+            self.popup.setup_text("!!! PARADA DE EMERGENCIA !!!")
+            hardware.log.warning("parada de emergencia")
             self.popup.open()
 
     def _dismiss_popup(self, dt):
         if self.popup:
-            self.popup.dismiss()
-            self.popup = None
-            
-    def enable_popup(self, text: str, delay=0):
-        self.open_popup(text)
-        if delay != 0:
-            self.close_popup_after_delay(delay)
-
-    # Muestra un popup con el texto dado
-    def open_popup(self, text: str):
-        if not self.popup:
-            self.popup = Popup_banner()
-
-        self.popup.setup_text(text)
-        self.text_popup = text
-        self.popup.open()
-
-    # Cierra el popup e de un retraso
-    def close_popup_after_delay(self, delay):
-        Clock.schedule_once(self.close_popup, delay)
-
-    # Cierra el popup
-    def close_popup(self, dt):
-        if self.popup:
-            hardware.log.info(f"cerrando pop-up{self.text_popup}")
             self.popup.dismiss()
             self.popup = None
 
@@ -138,14 +114,14 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.init_buttons()
-        self.output_bocina = hardware.output_bocina
         self.thread_buzzer = None
         self.thread_coin = None
         #hilo de bocina
         self.thread_claxon = threading.Thread(target=self.claxon_loop, daemon=True)
         if not self.thread_claxon.is_alive():
             self.thread_claxon.start()
-        
+        if not hardware.input_emergency.is_pressed:
+           self.show_popup()
         hardware.input_emergency.when_pressed = self.close_popup
         hardware.input_emergency.when_released = self.show_popup
 
@@ -235,7 +211,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
     def on_button_press(self, button):
         if self.state_button_selected == "STOP":
-            self.button_timers_event = Clock.schedule_interval(partial(self.set_times, button), 0.1)
+            self.button_timers_event = Clock.schedule_interval(partial(self.set_times, button), hardware.TIEMPO_100_MSEC)
 
     def on_button_release(self):
         if self.button_timers_event:
@@ -303,9 +279,10 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
                 callback = self.start_travel_time
                 if self.main_mode_selected == "AUTO":
-                    callback = self.start_waiting_time
+                    if not self.game_running:
+                        callback = self.start_waiting_time
 
-                self.clock_event = Clock.schedule_interval(callback, 1)
+                self.clock_event = Clock.schedule_interval(callback, hardware.TIEMPO_ONE_SEC)
             return
 
         if state_select == "PAUSE":
@@ -328,8 +305,6 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             return
 
         self.state_button_selected = "START"
-        self.game_running = True
-
         mode = self.main_mode_selected
 
         self.travel_time = self.lbl_to_time(self.backup_label_time_travel)
@@ -337,7 +312,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if mode == "AUTO":
             self.waiting_time = self.lbl_to_time(self.backup_label_time_wait)
             hardware.log.info("Conteo de espera en modo AUTO")
-            self.clock_event = Clock.schedule_interval(self.start_waiting_time, 1)
+            self.clock_event = Clock.schedule_interval(self.start_waiting_time, hardware.TIEMPO_ONE_SEC)
             return
 
         if mode == "MANUAL":
@@ -352,7 +327,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
     def start_travel_after_buzzer(self, dt):
         hardware.log.info(f"Comienza el juego en {self.main_mode_selected}")
-        self.clock_event = Clock.schedule_interval(self.start_travel_time, 1)
+        self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)
 
     # Actualiza el tiempo de espera (decrece)
     def start_waiting_time(self, dt):
@@ -366,17 +341,18 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 if self.clock_event:
                     self.clock_event.cancel()
                     self.clock_event = None
-                Clock.schedule_once(self.end_wainting_time_and_continue, hardware.TIEMPO_DURACION_SIRENA)
+                Clock.schedule_once(self.end_waiting_time_and_continue, hardware.TIEMPO_DURACION_SIRENA)
 
-    def end_wainting_time_and_continue(self, dt):
+    def end_waiting_time_and_continue(self, dt):
         self.label_time_wait = self.backup_label_time_wait
-        self.clock_event = Clock.schedule_interval(self.start_travel_time, 1)
+        self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)
         
     # Actualiza el tiempo de viaje
     def start_travel_time(self, dt):
         if self.state_button_selected != "START":
             return
         #enciende marcha
+        self.game_running = True
         self.set_marcha(True)
         # Actualizar contador según el modo
         self.travel_time = max(
@@ -396,8 +372,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 self.clean_all()
 
             elif self.main_mode_selected == "AUTO":
-                self.eating_coin()
-
+                self.set_marcha(False)
                 if self.clock_event:
                     self.clock_event.cancel()
                     self.clock_event = None
@@ -408,8 +383,11 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 Clock.schedule_once(self.end_travel_and_init, hardware.TIEMPO_DURACION_SIRENA)
 
     def end_travel_and_init(self, dt):
-        self.label_time_travel = self.backup_label_time_travel
-        self.init_counter()
+        if self.game_running:
+            self.game_running = False
+            self.eating_coin()
+            self.label_time_travel = self.backup_label_time_travel
+            self.init_counter()
 
     # Limpia todos los estados y reinicia los temporizadores
     def clean_all(self):
@@ -441,13 +419,12 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         ]: button.disabled = False
         #restablece modo de juego
 
-        modes = {
-            "AUTO": self.auto_button,
-            "MANUAL": self.manual_button,
-            "SEMI": self.semi_button,
-        }
-        for mode, button in modes.items():
-            button.state = "down" if self.main_mode_selected == mode else "normal"
+        for button in [
+            self.manual_button,
+            self.semi_button,
+            self.auto_button,
+        ]: button.state = "normal"
+        self.main_mode_selected = None
         self.state_button_selected = None
 
 class gameApp(App):

@@ -22,6 +22,30 @@ sudo bash -c "cat > $CMDLINE_FILE" <<EOF
 console=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 fsck.repair=yes rootwait loglevel=3 consoleblank=0 plymouth.enable=0 quiet vt.global_cursor_default=0 logo.nologo
 EOF
 
+CONFIG_FILE="/boot/config.txt"
+# Backup
+sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+# Eliminar configuraciones previas de esos GPIO
+sudo sed -i '/^gpio=18=op,/d' "$CONFIG_FILE"
+sudo sed -i '/^gpio=23=op,/d' "$CONFIG_FILE"
+sudo sed -i '/^gpio=24=op,/d' "$CONFIG_FILE"
+sudo sed -i '/^gpio=25=op,/d' "$CONFIG_FILE"
+sudo sed -i '/^gpio=12=op,/d' "$CONFIG_FILE"
+# Añadir configuración al final
+sudo tee -a "$CONFIG_FILE" >/dev/null <<EOF
+# Mantener señal de vídeo aunque no haya monitor
+hdmi_force_hotplug=1
+hdmi_group=2
+hdmi_mode=82
+
+# GPIO salidas en LOW al arrancar
+gpio=18=op,dl
+gpio=23=op,dl
+gpio=24=op,dl
+gpio=25=op,dl
+gpio=12=op,dl
+EOF
+
 echo "Creando estructura manual de Kivy..."
 
 mkdir -p /home/pi/.kivy

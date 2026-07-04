@@ -292,9 +292,10 @@
                             radius: [30]
                     on_press:
                         self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn_p)
-                        root.sound_claxon = True
+                        root.set_bocina(True)
                     on_release:
                         self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn)
+                        root.set_bocina(False)
         # Tercera fila
         BoxLayout:
             orientation: 'horizontal'
