@@ -106,6 +106,16 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 ###################################
 #############  HMI
 ###################################
+
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            if not self.collide_point(*touch.pos):
+                self.state = "normal"
+                touch.ungrab(self)
+            return True
+
+        return super().on_touch_move(touch)
+
     def deinit(self):
         self.running = False
         try:

@@ -1,0 +1,422 @@
+from kivy.app import App
+from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ObjectProperty
+from kivy.lang import Builder
+from kivy.clock import Clock,  mainthread
+from kivy.core.window import Window
+from kivy.uix.screenmanager import Screen
+from kivy.uix.button import Button
+from kivy.uix.boxlayout import BoxLayout
+from kivy.factory import Factory
+from kivy.uix.popup import Popup
+from speedmeter import SpeedMeter
+from kivy.utils import get_color_from_hex
+
+import time, threading
+import os
+import stat
+import shutil
+import hardware
+import platform
+import hora
+
+SO = platform.system()
+if SO == "Windows":
+    LOG_DIR = "."
+    try:
+        import win32file
+    except ImportError:
+        win32file = None
+else:
+    LOG_DIR = "/home/pi/logs"
+    win32file = None
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"ERROR creando {LOG_DIR}: {e}")
+        LOG_DIR = "."
+
+#constantes
+DISTANCIA_REFLECTOR = 9    # metros
+#globales
+distancia_entre_marcas = 9.0 # metros
+setter_trigger = False
+
+def window_setup():
+    Window.size = (1024, 600)    
+    Window.borderless = False
+   # Window.fullscreen = True
+   # Window.show_cursor = False
+    Window.release_all_keyboards()
+
+class MainScreen(Screen):
+    speed = NumericProperty(0)
+    active_file = StringProperty("")
+    nextPage = BooleanProperty(False)
+    RPM_sensor = BooleanProperty(False)
+    needle = BooleanProperty(False)
+    
+    def on_pre_enter(self):
+        global setter_trigger
+        self.nextPage = False
+        self.needle = setter_trigger
+    
+    def set_vel(self):
+        global setter_trigger
+        setter_trigger = not setter_trigger
+        self.needle = setter_trigger 
+        
+  #variables globales
+    def init_vars(self):
+        self.decay_event = None
+        self.no_pulse_start = None
+        self.simularPulsos = None
+        # Control de archivo
+        self.log_enabled = False
+        self.log_filename = None
+        self.last_pulse_time = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.running = True
+        self.sensor = hardware.input_sensor
+        self.init_vars()
+        self.thread_speed = threading.Thread(
+            target=self.read_speed,
+            daemon=True
+        )
+        self.thread_speed.start()
+
+    def deinit(self):
+        self.running = False
+        try:
+            self.thread_speed.join(timeout=1)
+            hardware.log.info("Hilos detenidos correctamente")
+        except Exception as e:
+            hardware.log.error(f"Error al detener los hilos: {e}")
+        finally:
+            if self.log_enabled: 
+                self.close_and_save_file()
+                Clock.schedule_once(lambda dt: self.close_and_save_file(), 0)
+            hardware.log.info("Pines cerrados correctamente")
+            hardware.close_all_pins()
+
+    def read_speed(self):
+        global distancia_entre_marcas
+        hardware.log.info("Inicia Hilo")
+        while self.running:
+            if self.nextPage:
+                time.sleep(0.1)
+                continue
+            # INICIO DEL REFLECTOR
+            self.sensor.wait_for_press()
+            t_on = time.perf_counter()
+            # FIN DEL REFLECTOR
+            self.sensor.wait_for_release()
+            t_off = time.perf_counter()
+            ton = t_off - t_on
+            if ton <= 0.01:
+                continue
+            # VELOCIDAD REAL MEDIDA CON TON
+            mps = DISTANCIA_REFLECTOR / ton
+            last_speed = mps * 3.6
+            Clock.schedule_once(lambda _, v=last_speed, t=ton :self.show_speed(v, t))
+            print(f"TON={ton:.3f}s VEL={last_speed:.2f} km/h")
+            last_off = t_off
+            # Tiempo esperado para recorrer las distancia entre marcas
+            expected = distancia_entre_marcas / mps
+            # Hasta aqui la velocidad estimada es válida
+            timeout = expected * 3
+            # Tiempo maximo hasta llegar a 0
+            stop_time = expected * 5
+            self.salir = False
+            decel_speed = None
+            # ==================================
+            # TOFF
+            # ==================================
+            while self.running and not self.nextPage:
+                # Llega el siguiente reflector
+                if self.sensor.is_pressed and self.salir:
+                    break
+                
+                elapsed = time.perf_counter() - last_off
+                # Zona normal
+                if elapsed <= timeout:
+                    kph_estimado = (distancia_entre_marcas / elapsed) * 3.6
+                    kph = min(last_speed, kph_estimado)
+                    print(f"elapsed_normal={elapsed:.3f}s  VEL={kph:.2f} km/h")
+                else:
+                # Zona de desaceleracion suave
+                    if decel_speed is None:
+                        decel_speed = kph
+                    ratio = max(0,1 - ((elapsed - timeout)/ (stop_time - timeout)))
+                    kph = decel_speed * ratio
+                    print(f"elapsed_desacelera={elapsed:.3f}s VEL={kph:.2f} km/h")
+        
+                Clock.schedule_once(lambda _, v=kph, e=elapsed:self.show_speed(v, e))
+                # Parada final
+                if elapsed >= stop_time or kph <= 1:
+                    Clock.schedule_once(lambda _, e=elapsed:self.show_speed(0, e))
+                    self.close_and_save_file()
+                    print(f"STOP elapsed={elapsed:.2f}s")
+                    break
+                time.sleep(0.05)
+
+    def simular_pulso(self, dt):
+        self.salir = True
+# log events
+    @mainthread
+    def close_and_save_file(self):
+        if not self.log_enabled or not self.log_filename: 
+            return
+        self.speed = 0
+        try:
+            os.chmod(self.log_path, stat.S_IREAD)
+            hardware.log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
+            self.active_file = ""
+        except Exception as e:
+            hardware.log.error("Error al cerrar archivo:", e)
+        self.log_enabled = False
+
+    @mainthread
+    def show_speed (self, _speed, _time):
+        self.speed = _speed
+        Clock.schedule_once(lambda _: self.save_events(_speed, _time))
+    
+    def save_events(self, velocidad, dt):
+        if not self.log_enabled:
+            dt_name = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+            self.log_path = os.path.join(LOG_DIR, f"Evento_{dt_name}.txt")
+            self.log_filename = f"Evento_{dt_name}.txt"
+            self.log_enabled = True
+            hardware.log.info(f"Nuevo archivo creado: {self.log_path}")
+
+        self.last_pulse_time = time.time()
+        dt_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        linea = f"Fecha y Hora = {dt_name}, Velocidad = {int(velocidad)} km/h, Tiempo = {dt:.2f} s\n"
+
+        try:
+            with open(self.log_path, "a", buffering=1) as f:
+                f.write(linea)
+        except Exception as e:
+            hardware.log.error("Error escribiendo archivo:", e)
+
+# nuevas pantallas
+
+class ReusablePopup(Popup):
+    title_text = StringProperty("")
+    message = StringProperty("")
+    on_confirm = ObjectProperty(None)
+    confirm_mode = BooleanProperty(False)
+    
+def export_to_usb(source_file, usb_drive):
+    try:
+        destination = os.path.join(usb_drive, os.path.basename(source_file))
+        shutil.copy2(source_file, destination)
+    except Exception as e:
+        hardware.log.warning(f"Error exportando archivo: {e}")
+
+def get_usb_drives():
+    drives = []
+    media_path = "/media/pi"
+
+    if not os.path.exists(media_path):
+        return drives
+
+    for item in os.listdir(media_path):
+        full_path = os.path.join(media_path, item)
+        if os.path.ismount(full_path):
+            drives.append(full_path)
+
+    return drives
+
+class FileListScreen(Screen):
+    cButt = BooleanProperty(False)
+
+    def on_pre_enter(self):
+        global setter_trigger
+        self.cButt = setter_trigger
+
+        files = [ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")]
+        self.ids.file_list.clear_widgets()
+
+        # Crear botones por archivo
+        for fname in files:
+            btn = Button(
+                background_color=get_color_from_hex("#fff700"),
+                text=fname,
+                size_hint_y=None,
+                height=40,
+                on_release=lambda b, f=fname: self.open_file(os.path.join(LOG_DIR, f))
+            )
+            self.ids.file_list.add_widget(btn)
+
+    def open_file(self, filename):
+        viewer = self.manager.get_screen("file_viewer")
+        viewer.load_file(filename)
+        self.manager.current = "file_viewer"
+        
+    def exportar_todos_usb(self):
+        usb_list = get_usb_drives()
+        hardware.log.warning(f"USB detectados: {usb_list}")
+        if not usb_list:
+            self.show_popup("AVISO", "NO HAY USB CONECTADO")
+            return
+
+        usb = usb_list[0]
+        files = [ os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.endswith(".txt")]
+
+        for f in files:
+            export_to_usb(f, usb)
+        self.show_popup("AVISO","EVENTOS EXPORTADOS" if files else "SIN EVENTOS")
+    
+    def borrar_archivos(self):
+        try:
+            files = [
+                os.path.join(LOG_DIR, f)
+                for f in os.listdir(LOG_DIR)
+                if f.startswith("Evento_") and f.endswith(".txt")
+            ]
+
+            if not files:
+                self.show_popup("AVISO", "SIN EVENTOS")
+                return
+
+            self.show_popup(
+                "AVISO",
+                "¿DESEA ELIMINAR TODOS LOS EVENTOS?",
+                on_confirm=lambda: self._borrar_archivos_confirmado(files)
+            )
+
+        except Exception as e:
+            hardware.log.error(f"ERROR LEYENDO EVENTOS:\n{e}")
+            self.show_popup("ERROR", "ERROR LEYENDO EVENTOS")
+
+
+    def _borrar_archivos_confirmado(self, files):
+        eliminados = 0
+        errores = []
+        for fname in files:
+            try:
+                hardware.log.info(f"Eliminando: {fname}")
+                if os.path.exists(fname):
+                    if SO == "Windows":
+                        os.chmod(fname, stat.S_IWRITE)
+                    os.remove(fname)
+                    eliminados += 1
+            except Exception as e:
+                hardware.log.error(f"ERROR eliminando {fname}: {e}")
+                errores.append(os.path.basename(fname))
+        # Refrescar lista visual
+        try:
+            if "file_list" in self.ids:
+                self.ids.file_list.clear_widgets()
+        except Exception as e:
+            hardware.log.error(f"ERROR actualizando lista: {e}")
+        # Resultado final
+        if errores:
+            self.show_popup(
+                "ERROR",
+                f"SE ELIMINARON {eliminados} EVENTOS\n\n"
+                f"NO SE PUDIERON ELIMINAR {len(errores)}"
+            )
+        else:
+            self.show_popup(
+                "AVISO",
+                f"SE ELIMINARON {eliminados} EVENTOS"
+            )
+
+    def show_popup(self, title, message, on_confirm=None):
+        def _open(dt):
+            popup = Factory.ReusablePopup()
+            popup.title_text = title
+            popup.message = message
+            popup.confirm_mode = on_confirm is not None
+
+            # Si el popup tiene un botón OK, le asignamos la acción
+            if on_confirm:
+                popup.on_confirm = on_confirm
+
+            popup.open()
+
+        Clock.schedule_once(_open, 0)
+    
+    def fecha_y_hora(self):
+        content = hora.DateTimePopup()
+        self.popup = Popup(
+            title="CONFIGURAR FECHA Y HORA",
+            content=content,
+            size_hint=(.90, .70), # se aumenta tamao de ventana de hora
+            auto_dismiss = False
+        )
+        content.popup = self.popup
+        self.popup.open()
+
+    def set_data(self):
+        if not self.cButt: 
+            return
+
+        layout = BoxLayout(
+            orientation='vertical',
+            spacing=30,
+            padding=30
+        )
+        popup = Popup(           
+            title='',
+            title_size=0,
+            content=layout,
+            size_hint=(0.5, 0.5),
+            auto_dismiss=True,
+            separator_height=0
+        )
+        for valor in (9, 7, 3.5):
+            btn = Button(
+                text=str(valor),
+                size_hint=(0.6, None),
+                height=60,
+                pos_hint={"center_x": 0.5}
+            )
+            btn.bind(
+                on_release=lambda instance, v=valor: self.choise_value(v, popup)
+            )
+            layout.add_widget(btn)
+        popup.open()
+
+    def choise_value(self, valor, popup):
+        global distancia_entre_marcas, setter_trigger
+        setter_trigger = False
+        #actualiza color de boton
+        self.cButt = False
+        distancia_entre_marcas = valor
+        hardware.log.warning(f"nueva distancia {distancia_entre_marcas}" )
+        popup.dismiss()
+
+class FileViewerScreen(Screen):
+    content = StringProperty("")
+    filename_open = StringProperty("")
+
+    def load_file(self, filename):
+        try:
+            with open(filename, "r") as f:
+                self.content = f.read()
+            self.filename_open = filename
+        except Exception as e:
+            self.content = f"Error al abrir archivo:\n{e}"
+
+class mainApp(App):
+    def build(self):
+        window_setup()
+        return Builder.load_file("game.kv")
+
+    def on_stop(self):
+        main_screen = self.root.get_screen("main")
+        main_screen.deinit()
+
+if __name__ == "__main__":
+    try:
+        mainApp().run()
+    except Exception as e:
+        hardware.log.error(f"error de excepcion {e}")
+    except KeyboardInterrupt:
+        hardware.log.error("keyboard exit")
+    finally:
+        hardware.close_all_pins()
