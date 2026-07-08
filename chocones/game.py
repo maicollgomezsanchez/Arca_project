@@ -1,6 +1,6 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import ObjectProperty, StringProperty, BooleanProperty
+from kivy.properties import  StringProperty
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -26,8 +26,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Variables de estado y botones
     main_mode_selected = None
     state_button_selected = None
-    label_time_travel = StringProperty("00:10")  # Tiempo de viaje
-    label_time_wait = StringProperty("00:10")  # Tiempo automático
+    label_time_travel = StringProperty("03:00")  # Tiempo de viaje
+    label_time_wait = StringProperty("01:00")  # Tiempo automático
     clock_event = None  # Evento de reloj para actualizar el tiempo
     coin_event = None
     travel_time = 0  # Contador de tiempo de viaje
@@ -44,11 +44,13 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def save_set_time(self):
         if self.label_time_wait != "--:--":
             self.backup_label_time_wait = self.label_time_wait
-        if self.label_time_wait != "--:--":
+        if self.label_time_travel != "--:--":
             self.backup_label_time_travel = self.label_time_travel
 
     # Convierte el formato de tiempo de etiqueta a segundos
     def lbl_to_time(self, lbl: str) -> int:
+        if lbl == "--:--":
+            return None
         mins, secs = map(int, lbl.split(":"))
         return mins * 60 + secs
 
@@ -164,6 +166,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.coin_event = Clock.schedule_interval( self._coin_pulse_cycle,hardware.TIEMPO_PULSOS_FICHA)
 
     def _coin_pulse_cycle(self, dt):
+        if self.game_running:
+            return
         self.pulse_on = not self.pulse_on
         if self.pulse_on:
             hardware.output_traga_ficha.on()
@@ -177,6 +181,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 self.coin_event = None
 
     def decoin_press(self):
+        if self.game_running:
+            return
         if self.decoin_button.state == "down":
             hardware.log.info("COIN BUTTON BLOCKED")
             self.coin_button.disabled = True
@@ -197,6 +203,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if id_button in timers:
             label, increment = timers[id_button]
             current_time = getattr(self, label, "00:00")
+            if current_time == "--:--":
+                return None
             current_time = self.lbl_to_time(current_time)
 
         new_time = max(0, current_time + increment)
@@ -218,6 +226,11 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.button_timers_event.cancel()
             self.save_set_time()
 
+    def disabled_timer_buttons(self, auto_disabled):
+        self.ids.btn_wait_p.disabled = auto_disabled
+        self.ids.btn_wait_m.disabled = auto_disabled
+        self.ids.btn_travel_p.disabled = auto_disabled
+        self.ids.btn_travel_m.disabled = auto_disabled
     # selecciona el modo del juego
     def mode_press(self, mode_select): 
         if all(
@@ -263,12 +276,17 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         if state_select == "START":
             for btn in (
+            self.coin_button,
             self.manual_button,
             self.semi_button,
             self.auto_button,
             self.start_button,): btn.disabled = True
             self.pause_button.disabled = False
             self.start_button.state = "normal"
+            # deshabbilitado comer ficha si no es auto
+            if self.main_mode_selected != "AUTO":
+                self.decoin_button.disabled = True
+                self.decoin_button.state = "down"
             
             if self.state_button_selected == "STOP":
                 self.save_set_time()
@@ -306,6 +324,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         self.state_button_selected = "START"
         mode = self.main_mode_selected
+        self.disabled_timer_buttons(True)
 
         self.travel_time = self.lbl_to_time(self.backup_label_time_travel)
         self.waiting_time = 0
@@ -320,10 +339,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         # Común a MANUAL y SEMI
         self.press_claxon = True
-        Clock.schedule_once(
-            self.start_travel_after_buzzer,
-            hardware.TIEMPO_DURACION_SIRENA
-        )
+        Clock.schedule_once(self.start_travel_after_buzzer, hardware.TIEMPO_DURACION_SIRENA)
 
     def start_travel_after_buzzer(self, dt):
         hardware.log.info(f"Comienza el juego en {self.main_mode_selected}")
@@ -332,6 +348,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Actualiza el tiempo de espera (decrece)
     def start_waiting_time(self, dt):
         if self.state_button_selected == "START":
+            self.game_running = True
             self.waiting_time = self.waiting_time - 1
             self.label_time_wait = self.time_to_lbl(self.waiting_time)
             if self.waiting_time <= 0:
@@ -395,7 +412,18 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             return
         # apaga la marcha
         self.set_marcha(False)
-        
+        # Habilitar botones HMI
+        for button in [
+            self.manual_button,
+            self.semi_button,
+            self.auto_button,
+            self.start_button,
+            self.pause_button,
+            self.decoin_button,
+            self.coin_button,    
+        ]: button.disabled = False
+        self.decoin_button.state = "normal"
+        self.disabled_timer_buttons(False)
         if self.game_running:
             self.game_running = False
             self.press_claxon = True
@@ -409,23 +437,26 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.clock_event.cancel()
             self.clock_event = None
 
-        # Habilitar botones HMI
-        for button in [
-            self.manual_button,
-            self.semi_button,
-            self.auto_button,
-            self.start_button,
-            self.pause_button,
-        ]: button.disabled = False
         #restablece modo de juego
+        self.modes = {
+            "AUTO": self.auto_button,
+            "MANUAL": self.manual_button,
+            "SEMI": self.semi_button,
+        }
+        for mode, button in self.modes.items():
+            button.state = "down" if self.main_mode_selected == mode else "normal"
+        mode_config = {
+            "MANUAL": ("--:--", "--:--"),
+            "SEMI": ("--:--", self.backup_label_time_travel),
+            "AUTO": (self.backup_label_time_wait, self.backup_label_time_travel),
+        }
 
-        for button in [
-            self.manual_button,
-            self.semi_button,
-            self.auto_button,
-        ]: button.state = "normal"
-        self.main_mode_selected = None
-        self.state_button_selected = None
+        self.label_time_wait, self.label_time_travel = mode_config.get(
+            self.main_mode_selected,
+            ("--:--", "--:--")
+        )
+        self.state_button_selected = "STOP"
+
 
 class gameApp(App):
     def build(self):

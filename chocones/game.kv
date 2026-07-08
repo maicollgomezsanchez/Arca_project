@@ -59,7 +59,7 @@
 
 <Button>:
     padding: 9, 9
-    font_size: 40
+    font_size: 35
     color:  utils.get_color_from_hex(c_text if self.state == 'normal' else '#ffffff')
     background_color: (0, 0, 0, 0)
     halign: 'center'
@@ -87,7 +87,8 @@
 
 <WhiteLabel@Label>:
     padding: 10, 10
-    font_size: 100
+    font_size: 150
+    font_name: "fonts/digital-7.ttf"
     color: utils.get_color_from_hex(c_text)
     canvas.before:
         Color:
@@ -103,11 +104,12 @@
     font_size: 80
     canvas.before:
         Color:
-            rgba: utils.get_color_from_hex(color_timer)
+            rgba: utils.get_color_from_hex(color_timer_press if self.disabled else color_timer)
         RoundedRectangle:
             size: self.size
             pos: self.pos
             radius: [radius_default]
+
 
     on_press:
         self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_timer_press)
@@ -202,11 +204,13 @@
                         spacing: 75
 
                         RoundButton:
+                            id: btn_travel_p
                             text: "+"
                             on_press: root.on_button_press('travel_+')
                             on_release: root.on_button_release()
 
                         RoundButton:
+                            id: btn_travel_m
                             text: "--"
                             on_press: root.on_button_press('travel_-')
                             on_release: root.on_button_release()
@@ -234,12 +238,14 @@
                         spacing: 75
 
                         RoundButton:
+                            id: btn_wait_p
                             text: "+"
                             on_press: root.on_button_press('auto_+')
                             on_release:
                                 root.on_button_release()
 
                         RoundButton:
+                            id: btn_wait_m
                             text: "--"
                             on_press: root.on_button_press('auto_-')
                             on_release:
@@ -253,7 +259,7 @@
                 # Boton activar comer ficha
                 ToggleButton:
                     id: decoin_button
-                    text: "DESACTIVAR\nDESCARGA" if decoin_button.state == 'normal' else "ACTIVAR\nDESCARGA"
+                    text: "DESACTIVAR\nDESCARGA" if self.state == 'normal' else "ACTIVAR\nDESCARGA"
                     canvas.before:
                         Color:
                             rgba: utils.get_color_from_hex(c_btn if self.state == 'normal' else c_btn_p)
@@ -266,11 +272,11 @@
                 # Boton comer ficha
                 Button:
                     id: coin_button
-                    text: 'COMER\nFICHAS' if decoin_button.state == 'normal' else ""
+                    text:  '' if self.disabled else 'COMER\nFICHAS'
                     canvas.before:
                         Color:
                             rgba:
-                                utils.get_color_from_hex(c_btn if decoin_button.state == 'normal' else c_dis)
+                                utils.get_color_from_hex(c_dis if self.disabled else c_btn)
                         RoundedRectangle:
                             size: self.size
                             pos: self.pos
@@ -296,6 +302,19 @@
                     on_release:
                         self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn)
                         root.set_bocina(False)
+                #Button:
+                #    text: "MUSICA"
+                #    canvas.before:
+                #        Color:
+                #            rgba: utils.get_color_from_hex(c_btn)
+                #        RoundedRectangle:
+                #            size: self.size
+                #            pos: self.pos
+                #            radius: [30]
+                #    on_press:
+                #        self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn_p)
+                #    on_release:
+                #        self.canvas.before.children[0].rgba = utils.get_color_from_hex(c_btn)
         # Tercera fila
         BoxLayout:
             orientation: 'horizontal'

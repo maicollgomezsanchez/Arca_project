@@ -43,7 +43,7 @@ TIEMPO_MAXIMO_ESPERA = 600 # minutos
 TIEMPO_REBOTE = 0.1  # 100 milisegundos
 TIEMPO_RETARDO_LUCES = 0.5 # 500 milisegundos
 MAXIMO_PULSOS_FICHA = 3 # pulsos 
-TIEMPO_PULSOS_FICHA = 0.300 # 500 milisengundos
+TIEMPO_PULSOS_FICHA = 0.200 # 200 milisengundos
 
 START, STOP, PAUSE, MANUAL, AUTO, SEMI = (
     "START",
