@@ -47,8 +47,8 @@ setter_trigger = False
 def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
-    Window.fullscreen = True
-    Window.show_cursor = False
+    #Window.fullscreen = True
+    #Window.show_cursor = False
     Window.release_all_keyboards()
 
 class MainScreen(Screen):
@@ -84,13 +84,10 @@ class MainScreen(Screen):
         self.init_vars()
         self.thread_speed = threading.Thread(
             target=self.read_speed,
-            args=(self.read_RPM,),
             daemon=True
         )
-        self.thread_speed.start()        
-        hardware.input_sensor.when_pressed = self.on_sensor
-        hardware.input_sensor.when_released  = self.off_sensor
-    
+        self.thread_speed.start()
+        self.sensor = hardware.input_sensor
     def deinit(self):
         self.running = False
         try:
@@ -118,8 +115,6 @@ class MainScreen(Screen):
             return
         self.RPM_sensor = False
 #simulacion de pulsos
-    def simular_pulso(self, dt):
-        self.simular_pulsos(dt)
     def simular_pulsos(self, dt):
         self.RPM_sensor = True
         Clock.schedule_once(self._reset_pulso, 0.01)
@@ -128,82 +123,59 @@ class MainScreen(Screen):
 #######################
 # hilo principal
 #######################
-    def read_speed(self, get_RPM):
+    def read_speed(self):
         global distancia_entre_pulsos
-        self._last = None
-        hardware.log.info("inicia sensor de velocidad")
+        hardware.log.info("Inicia Hilo")
+        last_detection = 0
+        last_dt = 0
+        self.speed = 0
         while self.running:
-            # ============================
-            # 1. ESPERAR FLANCO DE SUBIDA
-            # ============================
-            while not get_RPM():
-                now_ = time.time()
-                if self.last_pulse_time:
-                    elapsed = now_ - self.last_pulse_time
-                    if elapsed > TIMEOUT_DESACELERA and self.no_pulse_start is None:
-                        self.no_pulse_start = now_
-                        Clock.schedule_once(lambda _: self.start_decay(), 0)
-                    if elapsed >= TIMEOUT:
-                        self.timed_out = True
-                        self.last_pulse_time = None
-                        if self.log_enabled:
-                            hardware.log.info("cerrando por timeout")
-                        self.close_and_save_file()
-                if not self.running:
-                    if self.log_enabled:
-                        self.close_and_save_file()
-                    return
+            if self.nextPage:
                 time.sleep(0.001)
-            # ============================
-            # 2. PULSO DETECTADO
-            # ============================
-            _now = time.time()
-            self.last_pulse_time = _now
-            self.timed_out = False
-            # Cancelar decaimiento si estaba activo
-            if self.decay_event:
-                self.decay_event.cancel()
-                self.decay_event = None
-                self.no_pulse_start = None
-            # Calcular velocidad real
-            if self._last is not None:
-                _dt = _now - self._last
-                if _dt > 0:
-                    mps = distancia_entre_pulsos / _dt
-                    kph = min((mps * 3.6), VELOCIDAD_MAXIMA)
-                    Clock.schedule_once(lambda _: self.export_values(kph))
-                    self.save_events(kph, _dt)
-            self._last = _now
-            # Esperar flanco de bajada
-            while get_RPM():
-                if not self.running:
-                    if self.log_enabled:
+                continue
+            # ESPERAR INICIO DE MARCA / REFLECTOR
+            self.sensor.wait_for_press()
+            if not self.running or self.nextPage:
+                continue
+            now = time.time()
+            # CALCULAR VELOCIDAD REAL
+            if last_detection > 0:
+                dt = now - last_detection
+                if dt > 0:
+                    last_dt = dt
+                    mps = distancia_entre_pulsos / dt
+                    kph = min(mps * 3.6, VELOCIDAD_MAXIMA)
+                    Clock.schedule_once(
+                        lambda _, v=kph, t=dt:
+                        self.show_speed(v, t)
+                    )
+                    self.save_events(kph, dt)
+                    hardware.log.info(
+                        f"dt={dt:.3f}s "
+                        f"vel={kph:.2f} km/h"
+                    )
+            last_detection = now
+            # ESPERAR SALIDA DEL REFLECTOR
+            self.sensor.wait_for_release()
+            # ESPERA SIGUIENTE REFLECTOR o DETECCIoN DE PARADA
+            while not self.sensor.is_pressed:
+                # si todavia no hay dos marcas
+                if last_dt > 0:
+                    elapsed = time.time() - last_detection
+                    timeout = max(last_dt * 2, 3)
+                    if elapsed >= timeout:
+                        Clock.schedule_once(
+                            lambda _, e=elapsed:
+                            self.show_speed(0, e)
+                        )
                         self.close_and_save_file()
-                    return
+                        last_detection = 0
+                        last_dt = 0
+                        break
                 time.sleep(0.001)
-
-#DESACELERA
-    def start_decay(self):
-        if self.decay_event:
-            return
-        self.initial_speed = self.speed
-        self.decay_event = Clock.schedule_interval(self._decay_step, FRENADO)
-
-    def _decay_step(self, dt):
-        if self.no_pulse_start is None:
-            return False
-        elapsed = time.time() - self.no_pulse_start
-        ratio = max(0, 1 - (elapsed/3))
-        self.speed = self.initial_speed * ratio
-        if ratio <= 0.001:
-            self.decay_event = None
-            self.no_pulse_start = None
-            return False
-        return True
 # log events
     @mainthread
     def close_and_save_file(self):
-        self._last = None       
         if not self.log_enabled or not self.log_filename: 
             return
         try:
@@ -215,8 +187,9 @@ class MainScreen(Screen):
         self.log_enabled = False
 
     @mainthread
-    def export_values (self, _speed):
+    def show_speed (self, _speed, _time):
         self.speed = _speed
+        Clock.schedule_once(lambda _: self.save_events(_speed, _time))
     
     def save_events(self, velocidad, dt):
         if not self.log_enabled:
@@ -225,7 +198,6 @@ class MainScreen(Screen):
             self.log_filename = f"Evento_{dt_name}.txt"
             self.log_enabled = True
             hardware.log.info(f"Nuevo archivo creado: {self.log_path}")
-        self.last_pulse_time = time.time()
         dt_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         linea = f"Fecha y Hora = {dt_name}, Velocidad = {int(velocidad)} km/h, Tiempo = {dt:.2f} s\n"
         try:

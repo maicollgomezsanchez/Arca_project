@@ -6,6 +6,9 @@ from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.spinner import Spinner
+from kivy.uix.label import Label
 from kivy.factory import Factory
 from kivy.uix.popup import Popup
 from speedmeter import SpeedMeter
@@ -36,7 +39,7 @@ else:
         LOG_DIR = "."
 
 #constantes
-DISTANCIA_REFLECTOR = 9    # metros
+distancia_reflector = 9    # metros
 #globales
 distancia_entre_marcas = 9.0 # metros
 setter_trigger = False
@@ -44,8 +47,8 @@ setter_trigger = False
 def window_setup():
     Window.size = (1024, 600)    
     Window.borderless = False
-   # Window.fullscreen = True
-   # Window.show_cursor = False
+    #Window.fullscreen = True
+    #Window.show_cursor = False
     Window.release_all_keyboards()
 
 class MainScreen(Screen):
@@ -101,12 +104,11 @@ class MainScreen(Screen):
             hardware.close_all_pins()
 
     def read_speed(self):
-        global distancia_entre_marcas
+        global distancia_entre_marcas, distancia_reflector
         hardware.log.info("Inicia Hilo")
         while self.running:
             if self.nextPage:
-                time.sleep(0.1)
-                continue
+                return
             # INICIO DEL REFLECTOR
             self.sensor.wait_for_press()
             t_on = time.perf_counter()
@@ -117,10 +119,10 @@ class MainScreen(Screen):
             if ton <= 0.01:
                 continue
             # VELOCIDAD REAL MEDIDA CON TON
-            mps = DISTANCIA_REFLECTOR / ton
+            mps = distancia_reflector / ton
             last_speed = mps * 3.6
             Clock.schedule_once(lambda _, v=last_speed, t=ton :self.show_speed(v, t))
-            print(f"TON={ton:.3f}s VEL={last_speed:.2f} km/h")
+            #print(f"TON={ton:.3f}s VEL={last_speed:.2f} km/h")
             last_off = t_off
             # Tiempo esperado para recorrer las distancia entre marcas
             expected = distancia_entre_marcas / mps
@@ -128,14 +130,13 @@ class MainScreen(Screen):
             timeout = expected * 3
             # Tiempo maximo hasta llegar a 0
             stop_time = expected * 5
-            self.salir = False
             decel_speed = None
             # ==================================
             # TOFF
             # ==================================
             while self.running and not self.nextPage:
                 # Llega el siguiente reflector
-                if self.sensor.is_pressed and self.salir:
+                if self.sensor.is_pressed:
                     break
                 
                 elapsed = time.perf_counter() - last_off
@@ -143,26 +144,24 @@ class MainScreen(Screen):
                 if elapsed <= timeout:
                     kph_estimado = (distancia_entre_marcas / elapsed) * 3.6
                     kph = min(last_speed, kph_estimado)
-                    print(f"elapsed_normal={elapsed:.3f}s  VEL={kph:.2f} km/h")
+                    #print(f"elapsed_normal={elapsed:.3f}s  VEL={kph:.2f} km/h")
                 else:
                 # Zona de desaceleracion suave
                     if decel_speed is None:
                         decel_speed = kph
                     ratio = max(0,1 - ((elapsed - timeout)/ (stop_time - timeout)))
                     kph = decel_speed * ratio
-                    print(f"elapsed_desacelera={elapsed:.3f}s VEL={kph:.2f} km/h")
+                    #print(f"elapsed_desacelera={elapsed:.3f}s VEL={kph:.2f} km/h")
         
                 Clock.schedule_once(lambda _, v=kph, e=elapsed:self.show_speed(v, e))
                 # Parada final
                 if elapsed >= stop_time or kph <= 1:
                     Clock.schedule_once(lambda _, e=elapsed:self.show_speed(0, e))
                     self.close_and_save_file()
-                    print(f"STOP elapsed={elapsed:.2f}s")
+                    #print(f"STOP elapsed={elapsed:.2f}s")
                     break
-                time.sleep(0.05)
+                time.sleep(hardware.TIEMPO_ONE_MSEC/10)
 
-    def simular_pulso(self, dt):
-        self.salir = True
 # log events
     @mainthread
     def close_and_save_file(self):
@@ -236,7 +235,7 @@ class FileListScreen(Screen):
         global setter_trigger
         self.cButt = setter_trigger
 
-        files = [ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")]
+        files = sorted([ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")], reverse=True)
         self.ids.file_list.clear_widgets()
 
         # Crear botones por archivo
@@ -342,53 +341,121 @@ class FileListScreen(Screen):
     
     def fecha_y_hora(self):
         content = hora.DateTimePopup()
-        self.popup = Popup(
+        self.popup_dis = Popup(
             title="CONFIGURAR FECHA Y HORA",
             content=content,
             size_hint=(.90, .70), # se aumenta tamao de ventana de hora
             auto_dismiss = False
         )
-        content.popup = self.popup
-        self.popup.open()
-
+        content.popup = self.popup_dis
+        self.popup_dis.open()
+    
     def set_data(self):
-        if not self.cButt: 
+        global distancia_entre_marcas, distancia_reflector
+
+        if not self.cButt:
             return
 
+        spinner_font = 22
+        label_font = 24
+        button_font = 26
+        spinner_height = 45
+
+        # Layout principal del popup
         layout = BoxLayout(
             orientation='vertical',
-            spacing=30,
-            padding=30
+            spacing=8,
+            padding=10
         )
-        popup = Popup(           
+
+        grid = GridLayout(cols=2, spacing=4, size_hint_y=None)
+        grid.bind(minimum_height=grid.setter('height'))
+
+        # Ancho detector
+        grid.add_widget(
+            Label(
+                text="ANCHO DETECTOR [cms]",
+                font_size=30
+            )
+        )
+
+        self.reflex = Spinner(
+            text=str(distancia_reflector),
+            values=[str(y) for y in range(1, 201)],
+            size_hint=(1, None),
+            height=spinner_height,
+            font_size=spinner_font
+        )
+
+        grid.add_widget(self.reflex)
+
+        # Distancia sensor
+        grid.add_widget(
+            Label(
+                text="DISTANCIA SENSOR [mts]",
+                font_size=label_font
+            )
+        )
+
+        self.distance = Spinner(
+            text=str(distancia_entre_marcas),
+            values=[str(m) for m in range(1, 51)],
+            size_hint=(1, None),
+            height=spinner_height,
+            font_size=spinner_font
+        )
+
+        grid.add_widget(self.distance)
+
+        layout.add_widget(grid)
+
+        btn_layout = BoxLayout(
+            size_hint=(1, None),
+            height=60,
+            spacing=8
+        )
+
+        save_btn = Button(
+            text="GUARDAR",
+            font_size=button_font
+        )
+
+        save_btn.bind(on_release=self.choise_value)
+
+        btn_layout.add_widget(save_btn)
+        layout.add_widget(btn_layout)
+
+        # Popup
+        self.popup_dis = Popup(
             title='',
             title_size=0,
             content=layout,
-            size_hint=(0.5, 0.5),
+            size_hint=(0.90, 0.50),
             auto_dismiss=True,
             separator_height=0
         )
-        for valor in (9, 7, 3.5):
-            btn = Button(
-                text=str(valor),
-                size_hint=(0.6, None),
-                height=60,
-                pos_hint={"center_x": 0.5}
-            )
-            btn.bind(
-                on_release=lambda instance, v=valor: self.choise_value(v, popup)
-            )
-            layout.add_widget(btn)
-        popup.open()
 
-    def choise_value(self, valor, popup):
-        global distancia_entre_marcas, setter_trigger
+        self.popup_dis.open()
+
+
+    def choise_value(self, instance):
+        global distancia_entre_marcas
+        global distancia_reflector
+        global setter_trigger
+
         setter_trigger = False
-        #actualiza color de boton
         self.cButt = False
-        distancia_entre_marcas = valor
-        hardware.log.warning(f"nueva distancia {distancia_entre_marcas}" )
-        popup.dismiss()
+
+        distancia_reflector = int(self.reflex.text)
+        distancia_entre_marcas = float(self.distance.text)
+
+        hardware.log.warning(
+            f"Nueva distancia M: {distancia_entre_marcas} "
+            f"R: {distancia_reflector}"
+        )
+
+        if self.popup_dis:
+            self.popup_dis.dismiss()
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
