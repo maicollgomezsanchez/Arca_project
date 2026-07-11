@@ -40,10 +40,11 @@ TIEMPO_ONE_SEC = 1
 TIEMPO_100_MSEC = 0.1 # 100 milisegundos
 MAXIMAS_VUELTAS = 50
 TIEMPO_MAXIMO_ESPERA = 600 # minutos
+TIEMPO_MINIMO_ESPERA = 2 # segundos
 TIEMPO_REBOTE = 0.1  # 100 milisegundos
 TIEMPO_RETARDO_LUCES = 0.5 # 500 milisegundos
 MAXIMO_PULSOS_FICHA = 3 # pulsos 
-TIEMPO_PULSOS_FICHA = 0.200 # 200 milisengundos
+TIEMPO_PULSOS_FICHA = 0.150 # 150 milisengundos
 
 START, STOP, PAUSE, MANUAL, AUTO, SEMI = (
     "START",
@@ -60,7 +61,7 @@ if GPIO_AVAILABLE:
     output_marcha = LED(PIN_OUTPUT_MARCHA, initial_value=False)
     output_traga_ficha = LED(PIN_OUTPUT_TRAGA_FICHA, initial_value=False)
     # configuracion de pines entrada
-    input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=False, bounce_time=TIEMPO_REBOTE)
+    input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=True, bounce_time=TIEMPO_REBOTE)
     def close_all_pins():
     # outputs apagadas
         output_bocina.off()

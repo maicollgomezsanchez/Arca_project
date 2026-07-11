@@ -11,8 +11,8 @@ import hardware
 def window_setup():
     Window.size = (1024, 600)
     Window.borderless = True
-    Window.fullscreen = True
-    Window.show_cursor = False
+    #Window.fullscreen = True
+    #Window.show_cursor = False
     Window.release_all_keyboards()
 
 class Popup_banner(Popup):
@@ -26,8 +26,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Variables de estado y botones
     main_mode_selected = None
     state_button_selected = None
-    label_time_travel = StringProperty("03:00")  # Tiempo de viaje
-    label_time_wait = StringProperty("01:00")  # Tiempo automático
+    label_time_travel = StringProperty("00:10")  # Tiempo de viaje
+    label_time_wait = StringProperty("00:10")  # Tiempo automático
     clock_event = None  # Evento de reloj para actualizar el tiempo
     coin_event = None
     travel_time = 0  # Contador de tiempo de viaje
@@ -36,6 +36,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     game_running = None
     claxon_is_running = True
     press_claxon = False
+    coin_is_running = True
+    press_coin = False
     backup_label_time_wait = None
     backup_label_time_travel = None
     button_timers_event = None
@@ -98,6 +100,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.running = False
         try:
             self.claxon_loop.join(timeout=1)
+            self.coin_loop.join(timeout=1)
             hardware.log.info("Hilos detenidos correctamente")
         except Exception as e:
             hardware.log.error(f"Error al detener los hilos: {e}")
@@ -116,12 +119,13 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.init_buttons()
-        self.thread_buzzer = None
-        self.thread_coin = None
         #hilo de bocina
         self.thread_claxon = threading.Thread(target=self.claxon_loop, daemon=True)
+        self.thread_coin = threading.Thread(target=self.coin_loop, daemon=True)
         if not self.thread_claxon.is_alive():
             self.thread_claxon.start()
+        if not self.thread_coin.is_alive():
+            self.thread_coin.start()
         if not hardware.input_emergency.is_pressed:
            self.show_popup()
         hardware.input_emergency.when_pressed = self.close_popup
@@ -138,19 +142,25 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         hm = hardware.output_bocina
         if hm.is_lit != estado:
             hm.on() if estado else hm.off()
-            hardware.log.info(f"BOcina {hm.is_lit}")
+            hardware.log.info(f"Bocina {hm.is_lit}")
+            
+    def set_come_ficha(self, estado: bool):
+        hm = hardware.output_traga_ficha
+        if hm.is_lit != estado:
+            hm.on() if estado else hm.off()
+            hardware.log.info(f"come ficha {hm.is_lit}")
         
     def claxon_loop(self):
         hardware.log.info("iniciando hilo de bocina")
         while self.claxon_is_running:
-            time.sleep(0.1)
+            time.sleep(0.01)
             try:
                 if self.press_claxon:
+                    self.press_claxon = False
                     self.set_bocina(True)
                     hardware.log.info("sonando Bocina !!!")
                     time.sleep(hardware.TIEMPO_DURACION_SIRENA)
                     self.set_bocina(False)
-                    self.press_claxon = False
 
             except Exception as e:
                 hardware.log.error(f"Error en claxon_thread: {e}")
@@ -160,25 +170,25 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def eating_coin(self, dt=None):
         if self.decoin_button.state == "down":
             return
-        if self.coin_event is None:
-            self.pulse_count = 0
-            self.pulse_on = False
-            self.coin_event = Clock.schedule_interval( self._coin_pulse_cycle,hardware.TIEMPO_PULSOS_FICHA)
+        self.press_coin = True
 
-    def _coin_pulse_cycle(self, dt):
-        if self.game_running:
-            return
-        self.pulse_on = not self.pulse_on
-        if self.pulse_on:
-            hardware.output_traga_ficha.on()
-            hardware.log.info(f"Comiendo ficha x {self.pulse_count + 1}")
-            return
-        hardware.output_traga_ficha.off()
-        self.pulse_count += 1
-        if self.pulse_count >= hardware.MAXIMO_PULSOS_FICHA:
-            if self.coin_event:
-                self.coin_event.cancel()
-                self.coin_event = None
+    def coin_loop(self):
+        while self.coin_is_running:
+            time.sleep(0.01)
+            try:
+                if self.press_coin:
+                    self.press_coin = False
+                    time.sleep(hardware.TIEMPO_PULSOS_FICHA)
+                    for pulse in range(hardware.MAXIMO_PULSOS_FICHA):
+                        self.set_come_ficha(True)
+                        time.sleep(hardware.TIEMPO_PULSOS_FICHA)
+                        hardware.log.info(f"Comiendo Ficha x {pulse}")
+                        self.set_come_ficha(False)
+                        time.sleep(hardware.TIEMPO_PULSOS_FICHA)
+                
+            except Exception as e:
+                hardware.log.error(f"Error en coin_thread: {e}")
+                self.set_come_ficha(False)
 
     def decoin_press(self):
         if self.game_running:
@@ -211,7 +221,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         if label == "label_time_wait":
             if self.main_mode_selected == "AUTO":
-                current_time = min(hardware.TIEMPO_MAXIMO_ESPERA, new_time)
+                current_time = max(hardware.TIEMPO_MINIMO_ESPERA, min(hardware.TIEMPO_MAXIMO_ESPERA, new_time))
         else:
             current_time = new_time
 
@@ -348,7 +358,6 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Actualiza el tiempo de espera (decrece)
     def start_waiting_time(self, dt):
         if self.state_button_selected == "START":
-            self.game_running = True
             self.waiting_time = self.waiting_time - 1
             self.label_time_wait = self.time_to_lbl(self.waiting_time)
             if self.waiting_time <= 0:
@@ -396,13 +405,13 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 self.state_button_selected = "STOP"
                 #suena bocina
                 self.press_claxon = True
+                self.eating_coin()
                 # Programar continuacion en 2 segundos
                 Clock.schedule_once(self.end_travel_and_init, hardware.TIEMPO_DURACION_SIRENA)
 
     def end_travel_and_init(self, dt):
         if self.game_running:
             self.game_running = False
-            self.eating_coin()
             self.label_time_travel = self.backup_label_time_travel
             self.init_counter()
 
@@ -426,8 +435,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.disabled_timer_buttons(False)
         if self.game_running:
             self.game_running = False
+            self.eating_coin()
             self.press_claxon = True
-            Clock.schedule_once(self.eating_coin, hardware.TIEMPO_DURACION_SIRENA)
         # Restaurar etiquetas y detener el temporizador
         self.label_time_travel = self.backup_label_time_travel
         self.label_time_wait =self.backup_label_time_wait
