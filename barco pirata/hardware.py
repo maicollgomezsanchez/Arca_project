@@ -24,7 +24,8 @@ PIN_INPUT_GPIO_17 = 17     # pin 11
 PIN_INPUT_GPIO_22 = 22    # pin 15
 
 TIEMPO_ONE_SEC = 1
-TIEMPO_ONE_MSEC = 0.001 
+TIEMPO_ONE_MSEC = 0.001
+TIEMPO_TEN_MSEC = 0.01 
 TIEMPO_REBOTE_SENSOR = None
 PULL_UP = True
 PULL_DOWN = False
@@ -104,28 +105,26 @@ if GPIO_AVAILABLE:
 
 else:
     # Modo simulado
+    import random
     class Pin:
         def __init__(self):
-            self.is_lit = None
-        
-        def on(self):
-            self.is_lit = True
-            return self.is_lit
-
-        def off(self):
-            self.is_lit = False
-            return self.is_lit
-        
+            self.ton = 0.1
         def wait_for_press(self):
+            time.sleep(2)
+            self.ton = random.uniform(
+                0.09,  # rápido
+                0.30   # lento
+            )
+
             return True
 
         def wait_for_release(self):
-            time.sleep(1.5)
-            return True
-        
-        def is_pressed(self):
+            time.sleep(self.ton)
             return True
 
+        @property
+        def is_pressed(self):
+            return False
     # configuracion de pines entrada
     input_emergency = Pin()
     input_sensor = Pin()

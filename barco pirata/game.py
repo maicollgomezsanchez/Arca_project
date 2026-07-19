@@ -21,6 +21,7 @@ import shutil
 import hardware
 import platform
 import hora
+import math
 
 SO = platform.system()
 if SO == "Windows":
@@ -39,9 +40,11 @@ else:
         LOG_DIR = "."
 
 #constantes
-distancia_reflector = 9    # metros
+LONGITUD_PENDULO = 15.0
+G = 9.81
+distancia_reflector = 0.60
 #globales
-distancia_entre_marcas = 9.0 # metros
+timeout = 10 # segundos
 setter_trigger = False
 
 def window_setup():
@@ -51,6 +54,44 @@ def window_setup():
     #Window.show_cursor = False
     Window.release_all_keyboards()
 
+def rk4_step(theta, omega, dt):
+    def derivadas(th, om):
+        dtheta = om
+        domega = -(G / LONGITUD_PENDULO) * math.sin(th)
+        return dtheta, domega
+
+    k1_t, k1_o = derivadas(theta, omega)
+
+    k2_t, k2_o = derivadas(
+        theta + k1_t * dt / 2,
+        omega + k1_o * dt / 2
+    )
+
+    k3_t, k3_o = derivadas(
+        theta + k2_t * dt / 2,
+        omega + k2_o * dt / 2
+    )
+
+    k4_t, k4_o = derivadas(
+        theta + k3_t * dt,
+        omega + k3_o * dt
+    )
+
+    theta += dt * (
+        k1_t +
+        2 * k2_t +
+        2 * k3_t +
+        k4_t
+    ) / 6
+
+    omega += dt * (
+        k1_o +
+        2 * k2_o +
+        2 * k3_o +
+        k4_o
+    ) / 6
+    return theta, omega
+                
 class MainScreen(Screen):
     speed = NumericProperty(0)
     active_file = StringProperty("")
@@ -104,7 +145,7 @@ class MainScreen(Screen):
             hardware.close_all_pins()
 
     def read_speed(self):
-        global distancia_entre_marcas, distancia_reflector
+        global distancia_reflector, timeout
         hardware.log.info("Inicia Hilo")
         while self.running:
             if self.nextPage:
@@ -120,47 +161,29 @@ class MainScreen(Screen):
                 continue
             # VELOCIDAD REAL MEDIDA CON TON
             mps = distancia_reflector / ton
-            last_speed = mps * 3.6
-            Clock.schedule_once(lambda _, v=last_speed, t=ton :self.show_speed(v, t))
-            #print(f"TON={ton:.3f}s VEL={last_speed:.2f} km/h")
-            last_off = t_off
-            # Tiempo esperado para recorrer las distancia entre marcas
-            expected = distancia_entre_marcas / mps
-            # Hasta aqui la velocidad estimada es válida
-            timeout = expected * 3
-            # Tiempo maximo hasta llegar a 0
-            stop_time = expected * 5
-            decel_speed = None
-            # ==================================
-            # TOFF
-            # ==================================
+            kph = mps * 3.6
+            Clock.schedule_once(lambda _, v=kph, t=ton:self.show_speed(v, t))
+            # Condiciones iniciales
+            theta = 0.0
+            omega = mps / LONGITUD_PENDULO
+            # paso por el sensor
+            start_time = time.perf_counter()
             while self.running and not self.nextPage:
-                # Llega el siguiente reflector
+                # Si vuelve a pasar por el centro
                 if self.sensor.is_pressed:
                     break
-                
-                elapsed = time.perf_counter() - last_off
-                # Zona normal
-                if elapsed <= timeout:
-                    kph_estimado = (distancia_entre_marcas / elapsed) * 3.6
-                    kph = min(last_speed, kph_estimado)
-                    #print(f"elapsed_normal={elapsed:.3f}s  VEL={kph:.2f} km/h")
-                else:
-                # Zona de desaceleracion suave
-                    if decel_speed is None:
-                        decel_speed = kph
-                    ratio = max(0,1 - ((elapsed - timeout)/ (stop_time - timeout)))
-                    kph = decel_speed * ratio
-                    #print(f"elapsed_desacelera={elapsed:.3f}s VEL={kph:.2f} km/h")
-        
-                Clock.schedule_once(lambda _, v=kph, e=elapsed:self.show_speed(v, e))
-                # Parada final
-                if elapsed >= stop_time or kph <= 1:
-                    Clock.schedule_once(lambda _, e=elapsed:self.show_speed(0, e))
-                    self.close_and_save_file()
-                    #print(f"STOP elapsed={elapsed:.2f}s")
+                elapsed = time.perf_counter() - start_time
+                if elapsed >= timeout:
+                    Clock.schedule_once(lambda _, t =elapsed :self.show_speed(0, t))
                     break
-                time.sleep(hardware.TIEMPO_ONE_MSEC/10)
+                # RK4
+                theta, omega = rk4_step(theta, omega, hardware.TIEMPO_TEN_MSEC)
+                # ------------------------
+                velocidad = abs(omega) * LONGITUD_PENDULO
+                kph = velocidad * 3.6
+                Clock.schedule_once(lambda _, v=kph, t=elapsed :self.show_speed(v, t))
+                time.sleep(hardware.TIEMPO_TEN_MSEC)
+        hardware.warning.info("Fin Hilo")
 
 # log events
     @mainthread
@@ -351,7 +374,7 @@ class FileListScreen(Screen):
         self.popup_dis.open()
     
     def set_data(self):
-        global distancia_entre_marcas, distancia_reflector
+        global timeout, distancia_reflector
 
         if not self.cButt:
             return
@@ -397,15 +420,15 @@ class FileListScreen(Screen):
             )
         )
 
-        self.distance = Spinner(
-            text=str(distancia_entre_marcas),
-            values=[str(m) for m in range(1, 51)],
+        self.timeout = Spinner(
+            text=str(timeout),
+            values=[str(m) for m in range(1, 31)],
             size_hint=(1, None),
             height=spinner_height,
             font_size=spinner_font
         )
 
-        grid.add_widget(self.distance)
+        grid.add_widget(self.timeout)
 
         layout.add_widget(grid)
 
@@ -439,19 +462,19 @@ class FileListScreen(Screen):
 
 
     def choise_value(self, instance):
-        global distancia_entre_marcas
+        global timeout
         global distancia_reflector
         global setter_trigger
 
         setter_trigger = False
         self.cButt = False
 
-        distancia_reflector = int(self.reflex.text)
-        distancia_entre_marcas = float(self.distance.text)
+        distancia_reflector = float(self.reflex.text)
+        timeout = float(self.timeout.text)
 
         hardware.log.warning(
-            f"Nueva distancia M: {distancia_entre_marcas} "
-            f"R: {distancia_reflector}"
+            f"Nuevo timeout seg: {timeout} "
+            f"distancia: {distancia_reflector}"
         )
 
         if self.popup_dis:
@@ -481,8 +504,7 @@ class mainApp(App):
 if __name__ == "__main__":
     try:
         mainApp().run()
-    except Exception as e:
-        hardware.log.error(f"error de excepcion {e}")
+    
     except KeyboardInterrupt:
         hardware.log.error("keyboard exit")
     finally:

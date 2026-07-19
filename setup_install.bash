@@ -2,8 +2,6 @@
 
 set -e
 
-echo "Usuario actual: $(whoami)"
-
 echo "Actualizando sistema..."
 sudo apt update -y
 sudo apt upgrade -y
@@ -31,12 +29,14 @@ sudo sed -i '/^gpio=23=op,/d' "$CONFIG_FILE"
 sudo sed -i '/^gpio=24=op,/d' "$CONFIG_FILE"
 sudo sed -i '/^gpio=25=op,/d' "$CONFIG_FILE"
 sudo sed -i '/^gpio=12=op,/d' "$CONFIG_FILE"
-# Añadir configuración al final
+sudo sed -i '/^gpio=17=ip/d' "$CONFIG_FILE"
+# Anadir configuracion al final
 sudo tee -a "$CONFIG_FILE" >/dev/null <<EOF
-# Mantener señal de vídeo aunque no haya monitor
+# Mantener senal de video aunque no haya monitor
 hdmi_force_hotplug=1
 hdmi_group=2
-hdmi_mode=82
+hdmi_mode=87
+hdmi_cvt=1024 600 30
 
 # GPIO salidas en LOW al arrancar
 gpio=18=op,dl
@@ -44,6 +44,8 @@ gpio=23=op,dl
 gpio=24=op,dl
 gpio=25=op,dl
 gpio=12=op,dl
+# Entrada emergencia
+gpio=17=ip
 EOF
 
 echo "Creando estructura manual de Kivy..."
@@ -73,7 +75,7 @@ Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/pi/.Xauthority
 WorkingDirectory=/home/pi/Game
 
-ExecStartPre=/bin/sleep 5
+ExecStartPre=/bin/sleep 3
 ExecStart=/usr/bin/python3 /home/pi/Game/game.py
 
 Restart=always

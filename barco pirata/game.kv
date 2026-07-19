@@ -226,7 +226,9 @@ ScreenManager:
                 text: lvolver
                 size_hint_y: None
                 height: 50
-                on_release: app.root.current = "main"
+                on_release: 
+                    app.root.current = "main"
+                    app.root.nextPage = False
 
 # ---------------------------------------------------
 # PANTALLA VISOR DE ARCHIVOS

@@ -3,17 +3,12 @@ from kivy.uix.widget import Widget
 from kivy.properties import  StringProperty
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
-from kivy.core.window import Window
 from functools import partial
 import time, threading
 import hardware
 
 def window_setup():
-    Window.size = (1024, 600)
-    Window.borderless = True
-    #Window.fullscreen = True
-    #Window.show_cursor = False
-    Window.release_all_keyboards()
+    pass
 
 class Popup_banner(Popup):
     def __init__(self, **kwargs):

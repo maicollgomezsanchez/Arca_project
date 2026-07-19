@@ -4,18 +4,18 @@
 ############ CONSTANTES #########
 #:set radius_default 25
 #:set color_timer '#ffffff'
-#:set color_timer_press '#aeaeaee2'
+#:set color_timer_press '#aeaeae'
 #:set color_stop '#db1a1a'
-#:set color_stop_pressed '#7c0101e2'
+#:set color_stop_pressed '#7c0101'
 #:set color_start '#26c626'
-#:set color_start_presed '#033203e2'
+#:set color_start_presed '#033203'
 #:set color_pause '#ffff00'
-#:set color_pause_pressed '#4b4b00e2'
+#:set color_pause_pressed '#4b4b00'
 #:set c_modos '#2929ff'
-#:set c_modos_p '#000063e2'
-#:set c_label '#ffffffb3'
+#:set c_modos_p '#005d00'
+#:set c_label '#ffffff'
 #:set c_btn '#ffffff'
-#:set c_btn_p '#646464e2'
+#:set c_btn_p '#646464'
 #:set c_dis '#834a4a00'
 #:set color_popup '#887700'
 #:set label_txt_viaje 'TIEMPO VIAJE'
@@ -24,7 +24,8 @@
 #:set label_start 'MARCHA'
 #:set label_pause 'PAUSA'
 #:set label_stop 'PARO'
-#:set c_text '#333333'
+#:set c_text '#000000'
+#:set c_text_dis '#b7b7b7'
 
 <Popup_banner>:
     auto_dismiss: False
@@ -54,16 +55,20 @@
 
 # Estilo para los layouts
 <BoxLayout>:
-    spacing: 10
-    padding: 9, 9
+    spacing: 5
+    padding: 5, 5
+
+<Label>:
+    bold: True
 
 <Button>:
-    padding: 9, 9
+    padding: 5, 5
     font_size: 35
-    color:  utils.get_color_from_hex(c_text if self.state == 'normal' else '#ffffff')
+    color:  utils.get_color_from_hex(c_text if self.state == 'normal' else c_text_dis)
     background_color: (0, 0, 0, 0)
     halign: 'center'
     valign: 'middle'
+    bold: True
 
 # -------------------------
 # ESTILOS REUTILIZABLES
@@ -86,10 +91,9 @@
 
 
 <WhiteLabel@Label>:
-    padding: 10, 10
-    font_size: 150
+    font_size: 130
     font_name: "fonts/digital-7.ttf"
-    color: utils.get_color_from_hex(c_text)
+    color: utils.get_color_from_hex('#ff0000')
     canvas.before:
         Color:
             rgba: utils.get_color_from_hex(c_label)
@@ -109,8 +113,6 @@
             size: self.size
             pos: self.pos
             radius: [radius_default]
-
-
     on_press:
         self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_timer_press)
     on_release:
@@ -179,8 +181,6 @@
             orientation: 'horizontal'
             size_hint_y: 0.6
             spacing: 10
-            padding: 5
-
             # -------------------------
             # COLUMNA TIEMPO VIAJE
             # -------------------------
@@ -189,19 +189,20 @@
                 spacing: 5
 
                 LabelWithBg:
+                    size_hint_y: 0.2
                     text: label_txt_viaje
 
                 WhiteLabel:
+                    size_hint_y: 0.4
                     text: str(root.label_time_travel)
-                    size_hint_y: 0.5
 
                 BoxLayout:
                     size_hint_y: 0.4
-
                     BoxLayout:
                         size_hint_x: None
                         width: self.minimum_width
-                        spacing: 75
+                        padding: 5,10
+                        spacing: 90
 
                         RoundButton:
                             id: btn_travel_p
@@ -223,11 +224,12 @@
                 spacing: 5
 
                 LabelWithBg:
+                    size_hint_y: 0.2
                     text: label_txt_parada
 
                 WhiteLabel:
+                    size_hint_y: 0.4
                     text: str(root.label_time_wait)
-                    size_hint_y: 0.5
 
                 BoxLayout:
                     size_hint_y: 0.4
@@ -235,7 +237,8 @@
                     BoxLayout:
                         size_hint_x: None
                         width: self.minimum_width
-                        spacing: 75
+                        padding: 5,10
+                        spacing:  90
 
                         RoundButton:
                             id: btn_wait_p
