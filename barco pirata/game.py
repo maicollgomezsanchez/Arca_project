@@ -40,9 +40,9 @@ else:
         LOG_DIR = "."
 
 #constantes
-LONGITUD_PENDULO = 15.0
+REFLECTOR = 0.6
 G = 9.81
-distancia_reflector = 0.60
+longitud_pendulo = 15
 #globales
 timeout = 10 # segundos
 setter_trigger = False
@@ -56,40 +56,18 @@ def window_setup():
 
 def rk4_step(theta, omega, dt):
     def derivadas(th, om):
+        global longitud_pendulo
         dtheta = om
-        domega = -(G / LONGITUD_PENDULO) * math.sin(th)
+        domega = -(G / longitud_pendulo) * math.sin(th)
         return dtheta, domega
 
     k1_t, k1_o = derivadas(theta, omega)
+    k2_t, k2_o = derivadas(theta + k1_t * dt / 2, omega + k1_o * dt / 2)
+    k3_t, k3_o = derivadas(theta + k2_t * dt / 2, omega + k2_o * dt / 2)
+    k4_t, k4_o = derivadas(theta + k3_t * dt, omega + k3_o * dt)
+    theta += dt * (k1_t + 2 * k2_t + 2 * k3_t + k4_t) / 6
+    omega += dt * ( k1_o + 2 * k2_o + 2 * k3_o + k4_o) / 6
 
-    k2_t, k2_o = derivadas(
-        theta + k1_t * dt / 2,
-        omega + k1_o * dt / 2
-    )
-
-    k3_t, k3_o = derivadas(
-        theta + k2_t * dt / 2,
-        omega + k2_o * dt / 2
-    )
-
-    k4_t, k4_o = derivadas(
-        theta + k3_t * dt,
-        omega + k3_o * dt
-    )
-
-    theta += dt * (
-        k1_t +
-        2 * k2_t +
-        2 * k3_t +
-        k4_t
-    ) / 6
-
-    omega += dt * (
-        k1_o +
-        2 * k2_o +
-        2 * k3_o +
-        k4_o
-    ) / 6
     return theta, omega
                 
 class MainScreen(Screen):
@@ -145,44 +123,43 @@ class MainScreen(Screen):
             hardware.close_all_pins()
 
     def read_speed(self):
-        global distancia_reflector, timeout
+        global longitud_pendulo, timeout
         hardware.log.info("Inicia Hilo")
         while self.running:
-            if self.nextPage:
-                return
-            # INICIO DEL REFLECTOR
-            self.sensor.wait_for_press()
-            t_on = time.perf_counter()
-            # FIN DEL REFLECTOR
-            self.sensor.wait_for_release()
-            t_off = time.perf_counter()
-            ton = t_off - t_on
-            if ton <= 0.01:
-                continue
-            # VELOCIDAD REAL MEDIDA CON TON
-            mps = distancia_reflector / ton
-            kph = mps * 3.6
-            Clock.schedule_once(lambda _, v=kph, t=ton:self.show_speed(v, t))
-            # Condiciones iniciales
-            theta = 0.0
-            omega = mps / LONGITUD_PENDULO
-            # paso por el sensor
-            start_time = time.perf_counter()
-            while self.running and not self.nextPage:
-                # Si vuelve a pasar por el centro
-                if self.sensor.is_pressed:
-                    break
-                elapsed = time.perf_counter() - start_time
-                if elapsed >= timeout:
-                    Clock.schedule_once(lambda _, t =elapsed :self.show_speed(0, t))
-                    break
-                # RK4
-                theta, omega = rk4_step(theta, omega, hardware.TIEMPO_TEN_MSEC)
-                # ------------------------
-                velocidad = abs(omega) * LONGITUD_PENDULO
-                kph = velocidad * 3.6
-                Clock.schedule_once(lambda _, v=kph, t=elapsed :self.show_speed(v, t))
-                time.sleep(hardware.TIEMPO_TEN_MSEC)
+            while not self.nextPage:   
+                # INICIO DEL REFLECTOR
+                self.sensor.wait_for_press()
+                t_on = time.perf_counter()
+                # FIN DEL REFLECTOR
+                self.sensor.wait_for_release()
+                t_off = time.perf_counter()
+                ton = t_off - t_on
+                if ton <= hardware.TIEMPO_TEN_MSEC:
+                    continue
+                # VELOCIDAD REAL MEDIDA CON TON
+                mps = REFLECTOR / ton
+                kph = mps * 3.6
+                Clock.schedule_once(lambda _, v=kph, t=ton:self.show_speed(v, t))
+                # Condiciones iniciales
+                theta = 0.0
+                omega = mps / longitud_pendulo
+                # paso por el sensor
+                start_time = time.perf_counter()
+                while self.running and not self.nextPage:
+                    # Si vuelve a pasar por el centro
+                    if self.sensor.is_pressed:
+                        break
+                    elapsed = time.perf_counter() - start_time
+                    if elapsed >= timeout:
+                        Clock.schedule_once(lambda _, t =elapsed :self.show_speed(0, t))
+                        break
+                    # RK4
+                    theta, omega = rk4_step(theta, omega, hardware.TIEMPO_TEN_MSEC)
+                    # ------------------------
+                    velocidad = abs(omega) * longitud_pendulo
+                    kph = velocidad * 3.6
+                    Clock.schedule_once(lambda _, v=kph, t=elapsed :self.show_speed(v, t))
+                    time.sleep(hardware.TIEMPO_TEN_MSEC)
         hardware.warning.info("Fin Hilo")
 
 # log events
@@ -374,7 +351,7 @@ class FileListScreen(Screen):
         self.popup_dis.open()
     
     def set_data(self):
-        global timeout, distancia_reflector
+        global timeout, longitud_pendulo
 
         if not self.cButt:
             return
@@ -397,13 +374,13 @@ class FileListScreen(Screen):
         # Ancho detector
         grid.add_widget(
             Label(
-                text="ANCHO DETECTOR [cms]",
+                text="LONGITUD [mts]",
                 font_size=30
             )
         )
 
         self.reflex = Spinner(
-            text=str(distancia_reflector),
+            text=str(longitud_pendulo),
             values=[str(y) for y in range(1, 201)],
             size_hint=(1, None),
             height=spinner_height,
@@ -415,7 +392,7 @@ class FileListScreen(Screen):
         # Distancia sensor
         grid.add_widget(
             Label(
-                text="DISTANCIA SENSOR [mts]",
+                text="TIMEOUT [seg]",
                 font_size=label_font
             )
         )
@@ -463,18 +440,18 @@ class FileListScreen(Screen):
 
     def choise_value(self, instance):
         global timeout
-        global distancia_reflector
+        global longitud_pendulo
         global setter_trigger
 
         setter_trigger = False
         self.cButt = False
 
-        distancia_reflector = float(self.reflex.text)
+        longitud_pendulo = float(self.reflex.text)
         timeout = float(self.timeout.text)
 
         hardware.log.warning(
-            f"Nuevo timeout seg: {timeout} "
-            f"distancia: {distancia_reflector}"
+            f"Timeout: {timeout} "
+            f"Distancia pendulo: {longitud_pendulo}"
         )
 
         if self.popup_dis:
