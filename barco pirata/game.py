@@ -44,7 +44,7 @@ REFLECTOR = 0.6
 G = 9.81
 longitud_pendulo = 15
 #globales
-timeout = 10 # segundos
+timeout_juego = 30 # segundos
 setter_trigger = False
 
 def window_setup():
@@ -123,7 +123,7 @@ class MainScreen(Screen):
             hardware.close_all_pins()
 
     def read_speed(self):
-        global longitud_pendulo, timeout
+        global longitud_pendulo, timeout_juego
         hardware.log.info("Inicia Hilo")
         while self.running:
             while not self.nextPage:   
@@ -150,8 +150,9 @@ class MainScreen(Screen):
                     if self.sensor.is_pressed:
                         break
                     elapsed = time.perf_counter() - start_time
-                    if elapsed >= timeout:
+                    if elapsed >= timeout_juego:
                         Clock.schedule_once(lambda _, t =elapsed :self.show_speed(0, t))
+                        Clock.schedule_once(lambda dt: self.close_and_save_file(), 0)
                         break
                     # RK4
                     theta, omega = rk4_step(theta, omega, hardware.TIEMPO_TEN_MSEC)
@@ -351,7 +352,7 @@ class FileListScreen(Screen):
         self.popup_dis.open()
     
     def set_data(self):
-        global timeout, longitud_pendulo
+        global timeout_juego, longitud_pendulo
 
         if not self.cButt:
             return
@@ -381,7 +382,7 @@ class FileListScreen(Screen):
 
         self.reflex = Spinner(
             text=str(longitud_pendulo),
-            values=[str(y) for y in range(1, 201)],
+            values=[str(y) for y in range(1, 31)],
             size_hint=(1, None),
             height=spinner_height,
             font_size=spinner_font
@@ -398,8 +399,8 @@ class FileListScreen(Screen):
         )
 
         self.timeout = Spinner(
-            text=str(timeout),
-            values=[str(m) for m in range(1, 31)],
+            text=str(timeout_juego),
+            values=[str(m) for m in range(10, 61)],
             size_hint=(1, None),
             height=spinner_height,
             font_size=spinner_font
@@ -439,7 +440,7 @@ class FileListScreen(Screen):
 
 
     def choise_value(self, instance):
-        global timeout
+        global timeout_juego
         global longitud_pendulo
         global setter_trigger
 
@@ -447,10 +448,10 @@ class FileListScreen(Screen):
         self.cButt = False
 
         longitud_pendulo = float(self.reflex.text)
-        timeout = float(self.timeout.text)
+        timeout_juego = float(self.timeout.text)
 
         hardware.log.warning(
-            f"Timeout: {timeout} "
+            f"Timeout: {timeout_juego} "
             f"Distancia pendulo: {longitud_pendulo}"
         )
 
