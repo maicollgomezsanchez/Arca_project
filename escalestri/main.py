@@ -10,10 +10,6 @@ import hardware
 
 def window_setup():
     Window.size = (1024, 600)
-    Window.borderless = True
-    Window.fullscreen = True
-    Window.show_cursor = False
-    Window.release_all_keyboards()
 
 
 class Popup_banner(Popup):
@@ -60,27 +56,14 @@ class viewMain(Widget):
         self.thread_claxon = threading.Thread(target=self.claxon_thread, daemon=True)
         self.thread_claxon.start()
         # funciones de botones externos
-        '''hardware.input_sensor.when_released = self.off_sensor
+        hardware.input_sensor.when_released = self.off_sensor
         hardware.input_sensor.when_pressed = self.on_sensor
 
         hardware.input_emergency.when_pressed = self.close_popup
         hardware.input_emergency.when_released = self.show_popup
 
-        # inicia funciones de botones remotos
-        hardware.input_remote_bocina.when_pressed = self.on_buzzer
-        hardware.input_remote_bocina.when_released = self.off_buzzer
-
-        hardware.input_remote_marcha.when_pressed = lambda: Clock.schedule_once(
-            lambda dt: self._remote_marcha(), 0
-        )
-        hardware.input_remote_pausa.when_pressed = lambda: Clock.schedule_once(
-            lambda dt: self._remote_pausa(), 0
-        )
-        hardware.input_remote_paro.when_pressed = lambda: Clock.schedule_once(
-            lambda dt: self._remote_paro(), 0
-        )
         hardware.output_luces.on()
-        hardware.log.info("luces on!")'''
+        hardware.log.info("luces on!")
 
     def deinit(self):
         self.running = False
@@ -327,7 +310,7 @@ class viewMain(Widget):
             self.laps = self.backup_laps if self.main_mode == hardware.AUTO else 0
         
         while self.sound_claxon:
-            time.sleep(hardware.TIEMPO_REBOTE_SENSOR)
+            time.sleep(hardware.TIEMPO_100_MSEC)
 
         self.current_state = hardware.START
         self.init_counter = True
@@ -379,8 +362,7 @@ class gameApp(App):
 if __name__ == "__main__":
     try:
         gameApp().run()
-    except Exception as e:
-        hardware.log.error(f"error de excepcion {e}")
+    
     except KeyboardInterrupt:
         hardware.log.error("keyboard exit")
     finally:
