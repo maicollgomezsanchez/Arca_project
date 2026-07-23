@@ -26,11 +26,13 @@ import math
 SO = platform.system()
 if SO == "Windows":
     LOG_DIR = "."
+    ARCHIVO_CONFIG = os.path.join(os.getcwd(), "configGame.ini")
     try:
         import win32file
     except ImportError:
         win32file = None
 else:
+    ARCHIVO_CONFIG = "/home/pi/Game/GameConfig.ini"
     LOG_DIR = "/home/pi/logs"
     win32file = None
     try:
@@ -47,12 +49,28 @@ longitud_pendulo = 15
 timeout_juego = 30 # segundos
 setter_trigger = False
 
-def window_setup():
-    Window.size = (1024, 600)    
-    Window.borderless = False
-    #Window.fullscreen = True
-    #Window.show_cursor = False
-    Window.release_all_keyboards()
+def leer_config():
+    config = {}
+    if not os.path.exists(ARCHIVO_CONFIG):
+        os.makedirs(os.path.dirname(ARCHIVO_CONFIG), exist_ok=True)
+        with open(ARCHIVO_CONFIG, "w") as f:
+            f.write(f"longitud_pendulo={longitud_pendulo}\n")
+            f.write(f"timeout_juego={timeout_juego}\n")
+
+    with open(ARCHIVO_CONFIG, "r") as f:
+        for linea in f:
+            linea = linea.strip()
+            if "=" in linea:
+                clave, valor = linea.split("=", 1)
+                config[clave] = valor
+    return config
+
+def escribir_config(clave, valor):
+    config = leer_config()
+    config[clave] = valor
+    with open(ARCHIVO_CONFIG, "w") as f:
+        for k, v in config.items():
+            f.write(f"{k}={v}\n")
 
 def rk4_step(theta, omega, dt):
     def derivadas(th, om):
@@ -124,6 +142,9 @@ class MainScreen(Screen):
 
     def read_speed(self):
         global longitud_pendulo, timeout_juego
+        config = leer_config()
+        longitud_pendulo = int(config["longitud_pendulo"])
+        timeout_juego = int(config["timeout_juego"])
         hardware.log.info("Inicia Hilo")
         while self.running:
             while not self.nextPage:   
@@ -161,7 +182,6 @@ class MainScreen(Screen):
                     kph = velocidad * 3.6
                     Clock.schedule_once(lambda _, v=kph, t=elapsed :self.show_speed(v, t))
                     time.sleep(hardware.TIEMPO_TEN_MSEC)
-        hardware.warning.info("Fin Hilo")
 
 # log events
     @mainthread
@@ -447,13 +467,15 @@ class FileListScreen(Screen):
         setter_trigger = False
         self.cButt = False
 
-        longitud_pendulo = float(self.reflex.text)
-        timeout_juego = float(self.timeout.text)
+        longitud_pendulo = int(self.reflex.text)
+        timeout_juego = int(self.timeout.text)
 
         hardware.log.warning(
             f"Timeout: {timeout_juego} "
             f"Distancia pendulo: {longitud_pendulo}"
         )
+        escribir_config("longitud_pendulo", longitud_pendulo)
+        escribir_config("timeout_juego", timeout_juego)
 
         if self.popup_dis:
             self.popup_dis.dismiss()
@@ -471,8 +493,7 @@ class FileViewerScreen(Screen):
             self.content = f"Error al abrir archivo:\n{e}"
 
 class mainApp(App):
-    def build(self):
-        window_setup()
+    def build(self):        
         return Builder.load_file("game.kv")
 
     def on_stop(self):
