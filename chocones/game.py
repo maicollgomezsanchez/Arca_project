@@ -21,14 +21,15 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Variables de estado y botones
     main_mode_selected = None
     state_button_selected = None
-    label_time_travel = StringProperty("00:10")  # Tiempo de viaje
-    label_time_wait = StringProperty("00:10")  # Tiempo automático
+    label_time_travel = StringProperty("03:00")  # Tiempo de viaje
+    label_time_wait = StringProperty("00:15")  # Tiempo automático
     clock_event = None  # Evento de reloj para actualizar el tiempo
     coin_event = None
     travel_time = 0  # Contador de tiempo de viaje
     waiting_time = 0  # Contador de tiempo de espera
     popup = None  # Variable para manejar el popup
     game_running = None
+    pause_running = None
     claxon_is_running = True
     press_claxon = False
     coin_is_running = True
@@ -304,20 +305,27 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 if self.main_mode_selected == "AUTO":
                     if not self.game_running:
                         callback = self.start_waiting_time
-
+                if self.clock_event:
+                    self.clock_event.cancel()
                 self.clock_event = Clock.schedule_interval(callback, hardware.TIEMPO_ONE_SEC)
             return
 
         if state_select == "PAUSE":
-            hardware.log.info(f"pausado en modo: {self.main_mode_selected}")
             #apagando marcha si esta encendido
-            self.set_marcha(False)
             self.start_button.disabled = False
             self.pause_button.disabled = True
             self.pause_button.state = "normal"
+            # para evitar error de visual de pause 
+            if not self.pause_running:
+                if not self.game_running:
+                    return
             self.state_button_selected = "PAUSE"
-            # pausa el contador sin reiniciar el label
-            Clock.unschedule(self.clock_event)
+            hardware.log.info(f"pausado en modo: {self.main_mode_selected}")
+            self.set_marcha(False)
+            # limpia contador para abrir una nuevo en sig evento
+            if self.clock_event:
+                self.clock_event.cancel()
+                self.clock_event = None
             return
 
         raise ValueError("error states")
@@ -333,39 +341,46 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         self.travel_time = self.lbl_to_time(self.backup_label_time_travel)
         self.waiting_time = 0
+
         if mode == "AUTO":
             self.waiting_time = self.lbl_to_time(self.backup_label_time_wait)
             hardware.log.info("Conteo de espera en modo AUTO")
+            if self.clock_event:
+                self.clock_event.cancel()
             self.clock_event = Clock.schedule_interval(self.start_waiting_time, hardware.TIEMPO_ONE_SEC)
             return
 
         if mode == "MANUAL":
             self.travel_time = 0
-
         # Común a MANUAL y SEMI
         self.press_claxon = True
         Clock.schedule_once(self.start_travel_after_buzzer, hardware.TIEMPO_DURACION_SIRENA)
 
     def start_travel_after_buzzer(self, dt):
         hardware.log.info(f"Comienza el juego en {self.main_mode_selected}")
+        if self.clock_event:
+            self.clock_event.cancel()
         self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)
 
     # Actualiza el tiempo de espera (decrece)
     def start_waiting_time(self, dt):
         if self.state_button_selected == "START":
+            self.pause_running = True
             self.waiting_time = self.waiting_time - 1
             self.label_time_wait = self.time_to_lbl(self.waiting_time)
             if self.waiting_time <= 0:
                 # hace sonar la bocina por dos segundos y espera
                 hardware.log.info("Finaliza espera en modo AUTO inicia temporizador")
+                self.pause_running = False
                 self.press_claxon = True
                 if self.clock_event:
                     self.clock_event.cancel()
-                    self.clock_event = None
                 Clock.schedule_once(self.end_waiting_time_and_continue, hardware.TIEMPO_DURACION_SIRENA)
 
     def end_waiting_time_and_continue(self, dt):
         self.label_time_wait = self.backup_label_time_wait
+        if self.clock_event:
+            self.clock_event.cancel()
         self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)
         
     # Actualiza el tiempo de viaje
