@@ -61,7 +61,7 @@ if GPIO_AVAILABLE:
     output_marcha = LED(PIN_OUTPUT_MARCHA, initial_value=False)
     output_traga_ficha = LED(PIN_OUTPUT_TRAGA_FICHA, initial_value=False)
     # configuracion de pines entrada
-    input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=True, bounce_time=TIEMPO_REBOTE)
+    input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=True, bounce_time=None)
     def close_all_pins():
     # outputs apagadas
         output_bocina.off()

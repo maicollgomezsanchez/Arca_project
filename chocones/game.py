@@ -28,6 +28,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     travel_time = 0  # Contador de tiempo de viaje
     waiting_time = 0  # Contador de tiempo de espera
     popup = None  # Variable para manejar el popup
+    popup_enabled = False  # Variable para manejar el popup
     game_running = None
     pause_running = None
     claxon_is_running = True
@@ -57,18 +58,19 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         return f"{time % 3600 // 60:02d}:{time % 60:02d}"
     
     # funciones de  pop up
-    def show_popup(self):
-        self.clean_all()
-        Clock.schedule_once(self._open_popup, 0)
+    def show_popup(self, dt):
+        if not self.popup_enabled:
+            self.popup_enabled = True
+            self.clean_all()
+            Clock.schedule_once(self._open_popup, 0)
 
-    def close_popup(self):
+    def close_popup(self, dt):
         if self.popup_enabled:
             self.popup_enabled = False
             Clock.schedule_once(self._dismiss_popup, 0)
 
     def _open_popup(self, dt):
-        if not self.popup:
-            self.popup_enabled = True
+        if self.popup is None:
             self.popup = Popup_banner()
             self.popup.setup_text("!!! PARADA DE EMERGENCIA !!!")
             hardware.log.warning("parada de emergencia")
@@ -122,10 +124,22 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.thread_claxon.start()
         if not self.thread_coin.is_alive():
             self.thread_coin.start()
-        if not hardware.input_emergency.is_pressed:
-           self.show_popup()
-        hardware.input_emergency.when_pressed = self.close_popup
-        hardware.input_emergency.when_released = self.show_popup
+        self.thread_emergency = threading.Thread(target=self.emergency_loop, daemon=True)
+        if not self.thread_emergency.is_alive():
+            self.thread_emergency.start()
+
+    def emergency_loop(self):
+        while self.thread_emergency.is_alive():
+            try:
+                time.sleep(hardware.TIEMPO_100_MSEC)
+                if hardware.input_emergency.is_pressed:    
+                    if not self.popup_enabled:
+                        Clock.schedule_once(self.show_popup, 0)
+        
+                elif self.popup_enabled:
+                    Clock.schedule_once(self.close_popup, 0)
+            except:
+                hardware.log.warning("error en hilo de emergencia")
 
 # capa hardware
     def set_marcha(self, estado: bool):
