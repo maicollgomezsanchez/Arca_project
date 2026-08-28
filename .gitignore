@@ -12,6 +12,8 @@ kivy_env/
 logs/
 *.log
 *.txt
+*.zip
+*.ini
 
 # Archivos del sistema operativo
 .DS_Store
