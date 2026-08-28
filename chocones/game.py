@@ -95,10 +95,10 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         return super().on_touch_move(touch)
 
     def deinit(self):
-        self.running = False
         try:
             self.claxon_loop.join(timeout=1)
             self.coin_loop.join(timeout=1)
+            self.emergency_loop.join(timeout=1)
             hardware.log.info("Hilos detenidos correctamente")
         except Exception as e:
             hardware.log.error(f"Error al detener los hilos: {e}")
@@ -126,7 +126,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.thread_coin.start()
         self.thread_emergency = threading.Thread(target=self.emergency_loop, daemon=True)
         if not self.thread_emergency.is_alive():
-            self.thread_emergency.start()
+            #self.thread_emergency.start()
+            pass
 
     def emergency_loop(self):
         while self.thread_emergency.is_alive():
@@ -144,6 +145,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 # capa hardware
     def set_marcha(self, estado: bool):
         hm = hardware.output_marcha
+        if hardware.output_traga_ficha.is_lit is True:
+            return
         if hm.is_lit != estado:
             hm.on() if estado else hm.off()
             hardware.log.info(f"Marcha {hm.is_lit}")
@@ -156,6 +159,10 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             
     def set_come_ficha(self, estado: bool):
         hm = hardware.output_traga_ficha
+        if self.game_running and self.state_button_selected != "PAUSE":
+            hm.off()
+            hardware.log.info(f" juego on, come ficha off")
+            return
         if hm.is_lit != estado:
             hm.on() if estado else hm.off()
             hardware.log.info(f"come ficha {hm.is_lit}")
@@ -188,7 +195,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             try:
                 if self.press_coin:
                     self.press_coin = False
-                    time.sleep(hardware.TIEMPO_PULSOS_FICHA)
+                    time.sleep(hardware.TIEMPO_100_MSEC)
                     for pulse in range(hardware.MAXIMO_PULSOS_FICHA):
                         self.set_come_ficha(True)
                         time.sleep(hardware.TIEMPO_PULSOS_FICHA)
@@ -201,7 +208,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 self.set_come_ficha(False)
 
     def decoin_press(self):
-        if self.game_running:
+        if self.game_running and self.state_button_selected != "PAUSE":
             return
         if self.decoin_button.state == "down":
             hardware.log.info("COIN BUTTON BLOCKED")
@@ -296,7 +303,6 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         if state_select == "START":
             for btn in (
-            self.coin_button,
             self.manual_button,
             self.semi_button,
             self.auto_button,
@@ -305,6 +311,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.start_button.state = "normal"
             # deshabbilitado comer ficha si no es auto
             if self.main_mode_selected != "AUTO":
+                self.coin_button.disabled = True
                 self.decoin_button.disabled = True
                 self.decoin_button.state = "down"
             
@@ -319,6 +326,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 if self.main_mode_selected == "AUTO":
                     if not self.game_running:
                         callback = self.start_waiting_time
+                    else:
+                        self.coin_button.disabled = True
                 if self.clock_event:
                     self.clock_event.cancel()
                 self.clock_event = Clock.schedule_interval(callback, hardware.TIEMPO_ONE_SEC)
@@ -336,6 +345,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.state_button_selected = "PAUSE"
             hardware.log.info(f"pausado en modo: {self.main_mode_selected}")
             self.set_marcha(False)
+            if self.coin_button.disabled and self.main_mode_selected == "AUTO" and self.decoin_button.state != "down":
+                self.coin_button.disabled = False
             # limpia contador para abrir una nuevo en sig evento
             if self.clock_event:
                 self.clock_event.cancel()
@@ -385,6 +396,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             if self.waiting_time <= 0:
                 # hace sonar la bocina por dos segundos y espera
                 hardware.log.info("Finaliza espera en modo AUTO inicia temporizador")
+                self.coin_button.disabled = True
                 self.pause_running = False
                 self.press_claxon = True
                 if self.clock_event:
@@ -403,6 +415,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             return
         #enciende marcha
         self.game_running = True
+        self.coin_button.disabled = True
         self.set_marcha(True)
         # Actualizar contador según el modo
         self.travel_time = max(
@@ -452,11 +465,17 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.auto_button,
             self.start_button,
             self.pause_button,
-            self.decoin_button,
-            self.coin_button,    
         ]: button.disabled = False
-        self.decoin_button.state = "normal"
         self.disabled_timer_buttons(False)
+        # control de botones traga ficha
+        if self.main_mode_selected == "AUTO":
+            if self.decoin_button.state == "normal":
+                self.coin_button.disabled = False
+        else:
+            self.decoin_button.state = "normal"
+            self.coin_button.disabled = False
+            self.decoin_button.disabled = False
+            
         if self.game_running:
             self.game_running = False
             self.eating_coin()
