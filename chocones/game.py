@@ -6,9 +6,54 @@ from kivy.clock import Clock
 from functools import partial
 import time, threading
 import hardware
+import json, os, sys
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+ARCHIVO_CONFIG = os.path.join(BASE_DIR, "config.json")
+
+def guardar_valor(clave, valor):
+    datos = {}
+    if os.path.exists(ARCHIVO_CONFIG):
+        with open(ARCHIVO_CONFIG, "r", encoding="utf-8") as f:
+            datos = json.load(f)
+    datos[clave] = valor
+    with open(ARCHIVO_CONFIG, "w", encoding="utf-8") as f:
+        json.dump(datos, f, indent=4)
+
+def leer_valor(clave, valor_defecto=None):
+    if not os.path.exists(ARCHIVO_CONFIG):
+        return valor_defecto
+    with open(ARCHIVO_CONFIG, "r", encoding="utf-8") as f:
+        datos = json.load(f)
+    return datos.get(clave, valor_defecto)
 
 def window_setup():
     pass
+
+class Popup_luces(Popup):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def on_open(self):
+        for i in range(8):
+            value = hardware.output_ilum[i].is_lit
+            self.ids[f"luz{i+1}"].state = ("down" if value else "normal")
+
+    def luces_pressed_state(self, item, state):
+        led_ = hardware.output_ilum[item - 1]
+        led_.on() if state == "down" else led_.off()
+        hardware.log.info(f"iluminacion_{item}: {led_.is_lit}")
+    
+    def luces_all_off(self):
+        for i in range(8):
+            led_ = hardware.output_ilum[i]
+            led_.off()
+            self.ids[f"luz{i+1}"].state = ("normal")
+            hardware.log.info(f"iluminacion_{i + 1}: {led_.is_lit}")
 
 class Popup_banner(Popup):
     def __init__(self, **kwargs):
@@ -21,8 +66,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Variables de estado y botones
     main_mode_selected = None
     state_button_selected = None
-    label_time_travel = StringProperty("00:05")  # Tiempo de viaje
-    label_time_wait = StringProperty("00:05")  # Tiempo automático
+    label_time_travel = StringProperty()  # Tiempo de viaje
+    label_time_wait = StringProperty()  # Tiempo automático
     clock_event = None  # Evento de reloj para actualizar el tiempo
     coin_event = None
     travel_time = 0  # Contador de tiempo de viaje
@@ -38,13 +83,18 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     backup_label_time_wait = None
     backup_label_time_travel = None
     button_timers_event = None
+    popup_luces = None
 
+    def open_pop_up_luces(self):
+        self.popup_luces.open()
     #guarda el ultimo valor programado de tiempo
     def save_set_time(self):
         if self.label_time_wait != "--:--":
             self.backup_label_time_wait = self.label_time_wait
+            guardar_valor("time_wait", self.label_time_wait)
         if self.label_time_travel != "--:--":
             self.backup_label_time_travel = self.label_time_travel
+            guardar_valor("time_travel", self.label_time_travel)
 
     # Convierte el formato de tiempo de etiqueta a segundos
     def lbl_to_time(self, lbl: str) -> int:
@@ -116,6 +166,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.popup_luces = Popup_luces()
+        self.label_time_travel = leer_valor("time_travel", "03:00")
+        self.label_time_wait = leer_valor("time_wait", "00:15")
         self.init_buttons()
         #hilo de bocina
         self.thread_claxon = threading.Thread(target=self.claxon_loop, daemon=True)
@@ -520,7 +573,6 @@ class gameApp(App):
 if __name__ == "__main__":
     try:
         gameApp().run()
-    
     except KeyboardInterrupt:
         hardware.log.error("keyboard exit")
     finally:

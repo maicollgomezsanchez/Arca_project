@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 # Intentar cargar gpiozero
 try:
     from gpiozero import Button, LED
+    import pigpio
 
     GPIO_AVAILABLE = True
     log.info("gpiozero cargado correctamente")
@@ -23,17 +24,21 @@ PIN_INPUT_GPIO_4 = 4 # 7
 PIN_INPUT_EMERGENCY = 17  # 11
 PIN_INPUT_SENSOR = 27  # 13
 PIN_INPUT_GPIO_22 = 22 # 15
-# pines remotos
-PIN_INPUT_REMOTO_MARCHA = 5  # 29
-PIN_INPUT_REMOTO_PARO = 6  # 31
-PIN_INPUT_REMOTO_PAUSA = 13  # 33
-PIN_INPUT_REMOTO_BOCINA = 26  # 37
 # pines de salida
 PIN_OUTPUT_MARCHA = 18  # 12
 PIN_OUTPUT_BOCINA = 23  # 16
 PIN_OUTPUT_TRAGA_FICHA = 24  # 18
 PIN_OUTPUT_LUCES = 25 # 22
-PIN_OUTPUT_GPIO_12 = 12 # 32
+# pines genericos
+PIN_GPIO_5 = 5  # 29
+PIN_GPIO_6 = 6  # 31
+PIN_GPIO_12 = 12 # 32
+PIN_GPIO_13 = 13  # 33
+PIN_GPIO_16 = 16  # 36
+PIN_GPIO_19 = 19  # 35
+PIN_GPIO_20 = 20  # 38
+PIN_GPIO_21 = 21  # 40
+PIN_GPIO_26 = 26  # 37
 # configuraciones
 TIEMPO_DURACION_SIRENA = 1
 TIEMPO_ONE_SEC = 1
@@ -55,23 +60,50 @@ START, STOP, PAUSE, MANUAL, AUTO, SEMI = (
     "SEMI",
 )
 
+PINES_GPIO_ILUM = [PIN_GPIO_5, PIN_GPIO_6, PIN_GPIO_12, 
+            PIN_GPIO_13, PIN_GPIO_16, PIN_GPIO_19,
+            PIN_GPIO_20, PIN_GPIO_21, PIN_GPIO_26]
+
 if GPIO_AVAILABLE:
+    _pi = pigpio.pi()
+
+    if not _pi.connected:
+        raise RuntimeError("pigpiod no está ejecutándose")
+    
+    class PersistentLED:
+        def __init__(self, pin):
+            self.pin = pin
+            _pi.set_mode(pin, pigpio.OUTPUT)
+
+        def on(self):
+            _pi.write(self.pin, 1)
+
+        def off(self):
+            _pi.write(self.pin, 0)
+
+        @property
+        def is_lit(self):
+            return bool(_pi.read(self.pin))
+
+        def close(self):
+            # NO liberar el GPIO
+            pass
+
     # configuracion de pines salida
     output_bocina = LED(PIN_OUTPUT_BOCINA, initial_value=False)
     output_marcha = LED(PIN_OUTPUT_MARCHA, initial_value=False)
     output_traga_ficha = LED(PIN_OUTPUT_TRAGA_FICHA, initial_value=False)
     # configuracion de pines entrada
     input_emergency = Button(PIN_INPUT_EMERGENCY, pull_up=True, bounce_time=None)
+    #iluminacion salidas
+    output_ilum = [PersistentLED(pin) for pin in PINES_GPIO_ILUM]
+
     def close_all_pins():
     # outputs apagadas
         output_bocina.off()
         output_marcha.off()
         output_traga_ficha.off()
     #pines cerrados
-        output_bocina.close()
-        output_marcha.close()
-        output_traga_ficha.close()
-        input_emergency.close()
         log.info("close all pins")
     
 else:
@@ -102,6 +134,8 @@ else:
     output_traga_ficha = Pin()
     # configuracion de pines entrada
     input_emergency = Pin()
+    #iluminacion
+    output_ilum = [Pin() for _ in PINES_GPIO_ILUM]
     
     def close_all_pins():
         log.info("Modo simulado: no hay pines que cerrar")

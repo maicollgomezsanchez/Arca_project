@@ -175,6 +175,19 @@
                             size: self.size
                             pos: self.pos
                             radius: [radius_default]
+            BoxLayout:
+                Button:
+                    id: luces_button
+                    text: "ILUM"
+                    #group: "mode"
+                    on_press: root.open_pop_up_luces()
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(c_modos_p if self.state == 'down' else c_modos)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
 
         # Segunda fila
         BoxLayout:
@@ -369,3 +382,100 @@
                     self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_stop_pressed)
                 on_release:
                     self.canvas.before.children[0].rgba = utils.get_color_from_hex(color_stop)
+
+<ToggleButtonLed@ToggleButton>:
+    text: ''
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex('#025e02' if self.state == 'down' else '#fbff00')
+        RoundedRectangle:
+            size: self.size
+            pos: self.pos
+            radius: [30]
+
+<Popup_luces>:
+    auto_dismiss: False
+    separator_height: 0
+    size_hint: 1, 1
+    title: ''
+    background_color: utils.get_color_from_hex (c_modos)
+
+    GridLayout:
+        cols: 3
+        rows: 4
+        spacing: 15
+        padding: 20
+
+        ToggleButtonLed:
+            id: luz1
+            text: 'SALIDA 1\nENCENDIDA' if self.state == 'down' else 'SALIDA 1\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(1, self.state)
+
+        ToggleButtonLed:
+            id: luz2
+            text: 'SALIDA 2\nENCENDIDA' if self.state == 'down' else 'SALIDA 2\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(2, self.state)
+
+        Button:
+            text: 'Volver'
+            on_release: root.dismiss()
+            canvas.before:
+                Color:
+                    rgba: utils.get_color_from_hex('#888888' if self.state == 'down' else '#ffffff')
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [30]
+
+        ToggleButtonLed:
+            id: luz3
+            text: 'SALIDA 3\nENCENDIDA' if self.state == 'down' else 'SALIDA 3\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(3, self.state)
+
+        ToggleButtonLed:
+            id: luz4
+            text: 'SALIDA 4\nENCENDIDA' if self.state == 'down' else 'SALIDA 4\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(4, self.state)
+
+        Widget:
+
+        ToggleButtonLed:
+            id: luz5
+            text: 'SALIDA 5\nENCENDIDA' if self.state == 'down' else 'SALIDA 5\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(5, self.state)
+
+        ToggleButtonLed:
+            id: luz6
+            text: 'SALIDA 6\nENCENDIDA' if self.state == 'down' else 'SALIDA 6\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(6, self.state)
+
+        Widget:
+
+        ToggleButtonLed:
+            id: luz7
+            text: 'SALIDA 7\nENCENDIDA' if self.state == 'down' else 'SALIDA 7\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(7, self.state)
+
+        ToggleButtonLed:
+            id: luz8
+            text: 'SALIDA 8\nENCENDIDA' if self.state == 'down' else 'SALIDA 8\nAPAGADA'
+            on_state:
+                root.luces_pressed_state(8, self.state)
+
+        Button:
+            text: 'APAGAR\nTODO'
+            on_release: root.luces_all_off()
+            canvas.before:
+                Color:
+                    rgba: utils.get_color_from_hex('#025e02' if self.state == 'down' else '#fbff00')
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [30]

@@ -62,14 +62,19 @@ if [ -f "$CONFIG_FILE" ]; then
 
     sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
 
-    # Limpiar configuraciones previas
     sudo sed -i '/^gpio=18=op,/d' "$CONFIG_FILE"
     sudo sed -i '/^gpio=23=op,/d' "$CONFIG_FILE"
     sudo sed -i '/^gpio=24=op,/d' "$CONFIG_FILE"
     sudo sed -i '/^gpio=25=op,/d' "$CONFIG_FILE"
     sudo sed -i '/^gpio=12=op,/d' "$CONFIG_FILE"
-    sudo sed -i '/^gpio=17=ip/d' "$CONFIG_FILE"
-    sudo sed -i '/^gpio=27=ip/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=5=op,/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=6=op,/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=13=op,/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=19=op,/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=16=op,/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=26=op,/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=20=op,/d' "$CONFIG_FILE"
+    sudo sed -i '/^gpio=21=op,/d' "$CONFIG_FILE"
 
     sudo tee -a "$CONFIG_FILE" >/dev/null <<EOF
 
@@ -85,6 +90,14 @@ gpio=23=op,dl
 gpio=24=op,dl
 gpio=25=op,dl
 gpio=12=op,dl
+gpio=5=op,dl
+gpio=6=op,dl
+gpio=13=op,dl
+gpio=19=op,dl
+gpio=16=op,dl
+gpio=26=op,dl
+gpio=20=op,dl
+gpio=21=op,dl
 
 # Entradas
 gpio=17=ip
