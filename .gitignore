@@ -7,6 +7,7 @@ node_modules/
 
 # Archivos de entorno
 kivy_env/
+.venv/
 
 # Archivos de logs
 logs/

@@ -21,8 +21,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Variables de estado y botones
     main_mode_selected = None
     state_button_selected = None
-    label_time_travel = StringProperty("03:00")  # Tiempo de viaje
-    label_time_wait = StringProperty("00:15")  # Tiempo automático
+    label_time_travel = StringProperty("00:05")  # Tiempo de viaje
+    label_time_wait = StringProperty("00:05")  # Tiempo automático
     clock_event = None  # Evento de reloj para actualizar el tiempo
     coin_event = None
     travel_time = 0  # Contador de tiempo de viaje
@@ -126,11 +126,12 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.thread_coin.start()
         self.thread_emergency = threading.Thread(target=self.emergency_loop, daemon=True)
         if not self.thread_emergency.is_alive():
-            #self.thread_emergency.start()
-            pass
+            self.thread_emergency.start()
 
     def emergency_loop(self):
         while self.thread_emergency.is_alive():
+            if not hardware.GPIO_AVAILABLE:
+                continue
             try:
                 time.sleep(hardware.TIEMPO_100_MSEC)
                 if hardware.input_emergency.is_pressed:    
@@ -258,6 +259,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.ids.btn_wait_m.disabled = auto_disabled
         self.ids.btn_travel_p.disabled = auto_disabled
         self.ids.btn_travel_m.disabled = auto_disabled
+
     # selecciona el modo del juego
     def mode_press(self, mode_select): 
         if all(
@@ -337,7 +339,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             #apagando marcha si esta encendido
             self.start_button.disabled = False
             self.pause_button.disabled = True
-            self.pause_button.state = "normal"
+            #self.pause_button.state = "normal"
             # para evitar error de visual de pause 
             if not self.pause_running:
                 if not self.game_running:
@@ -393,7 +395,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.pause_running = True
             self.waiting_time = self.waiting_time - 1
             self.label_time_wait = self.time_to_lbl(self.waiting_time)
-            if self.waiting_time <= 0:
+            if self.waiting_time < 0:
                 # hace sonar la bocina por dos segundos y espera
                 hardware.log.info("Finaliza espera en modo AUTO inicia temporizador")
                 self.coin_button.disabled = True
@@ -401,18 +403,15 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 self.press_claxon = True
                 if self.clock_event:
                     self.clock_event.cancel()
-                Clock.schedule_once(self.end_waiting_time_and_continue, hardware.TIEMPO_DURACION_SIRENA)
-
-    def end_waiting_time_and_continue(self, dt):
-        self.label_time_wait = self.backup_label_time_wait
-        if self.clock_event:
-            self.clock_event.cancel()
-        self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)
+                self.label_time_wait = self.backup_label_time_wait
+                self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)        
         
     # Actualiza el tiempo de viaje
     def start_travel_time(self, dt):
         if self.state_button_selected != "START":
             return
+        elif self.pause_button.state == "down":
+            self.state_press("PAUSE")
         #enciende marcha
         self.game_running = True
         self.coin_button.disabled = True
@@ -428,6 +427,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         )
         self.label_time_travel = self.time_to_lbl(self.travel_time)
         # Si no es modo MANUAL y el contador llega a 0
+        if self.pause_button.state == "down":
+            self.state_press("PAUSE")
         if self.travel_time == 0:
             self.label_time_travel = "00:00"
             hardware.log.info(f"Finaliza en {self.main_mode_selected}")
@@ -439,18 +440,14 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 if self.clock_event:
                     self.clock_event.cancel()
                     self.clock_event = None
-                self.state_button_selected = "STOP"
-                #suena bocina
-                self.press_claxon = True
-                self.eating_coin()
-                # Programar continuacion en 2 segundos
-                Clock.schedule_once(self.end_travel_and_init, hardware.TIEMPO_DURACION_SIRENA)
-
-    def end_travel_and_init(self, dt):
-        if self.game_running:
-            self.game_running = False
-            self.label_time_travel = self.backup_label_time_travel
-            self.init_counter()
+                if self.game_running:
+                    self.game_running = False
+                    self.coin_button.disabled = False
+                    self.press_claxon = True
+                    self.eating_coin()
+                    self.label_time_travel = self.backup_label_time_travel
+                    self.state_button_selected = "STOP"
+                    self.init_counter()      
 
     # Limpia todos los estados y reinicia los temporizadores
     def clean_all(self):
