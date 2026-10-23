@@ -1,7 +1,12 @@
 from kivy.app import App
-from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ObjectProperty
+from kivy.properties import (
+    NumericProperty,
+    StringProperty,
+    BooleanProperty,
+    ObjectProperty,
+)
 from kivy.lang import Builder
-from kivy.clock import Clock,  mainthread
+from kivy.clock import Clock, mainthread
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
@@ -23,8 +28,7 @@ import platform
 import hora
 import math
 
-SO = platform.system()
-if SO == "Windows":
+if platform.system().lower() == "Windows":
     LOG_DIR = "."
     ARCHIVO_CONFIG = os.path.join(os.getcwd(), "configGame.ini")
     try:
@@ -41,13 +45,14 @@ else:
         print(f"ERROR creando {LOG_DIR}: {e}")
         LOG_DIR = "."
 
-#constantes
+# constantes
 REFLECTOR = 0.6
 G = 9.81
 longitud_pendulo = 15
-#globales
-timeout_juego = 30 # segundos
+# globales
+timeout_juego = 30  # segundos
 setter_trigger = False
+
 
 def leer_config():
     config = {}
@@ -65,12 +70,14 @@ def leer_config():
                 config[clave] = valor
     return config
 
+
 def escribir_config(clave, valor):
     config = leer_config()
     config[clave] = valor
     with open(ARCHIVO_CONFIG, "w") as f:
         for k, v in config.items():
             f.write(f"{k}={v}\n")
+
 
 def rk4_step(theta, omega, dt):
     def derivadas(th, om):
@@ -84,28 +91,29 @@ def rk4_step(theta, omega, dt):
     k3_t, k3_o = derivadas(theta + k2_t * dt / 2, omega + k2_o * dt / 2)
     k4_t, k4_o = derivadas(theta + k3_t * dt, omega + k3_o * dt)
     theta += dt * (k1_t + 2 * k2_t + 2 * k3_t + k4_t) / 6
-    omega += dt * ( k1_o + 2 * k2_o + 2 * k3_o + k4_o) / 6
+    omega += dt * (k1_o + 2 * k2_o + 2 * k3_o + k4_o) / 6
 
     return theta, omega
-                
+
+
 class MainScreen(Screen):
     speed = NumericProperty(0)
     active_file = StringProperty("")
     nextPage = BooleanProperty(False)
     RPM_sensor = BooleanProperty(False)
     needle = BooleanProperty(False)
-    
+
     def on_pre_enter(self):
         global setter_trigger
         self.nextPage = False
         self.needle = setter_trigger
-    
+
     def set_vel(self):
         global setter_trigger
         setter_trigger = not setter_trigger
-        self.needle = setter_trigger 
-        
-  #variables globales
+        self.needle = setter_trigger
+
+    # variables globales
     def init_vars(self):
         self.decay_event = None
         self.no_pulse_start = None
@@ -120,10 +128,7 @@ class MainScreen(Screen):
         self.running = True
         self.sensor = hardware.input_sensor
         self.init_vars()
-        self.thread_speed = threading.Thread(
-            target=self.read_speed,
-            daemon=True
-        )
+        self.thread_speed = threading.Thread(target=self.read_speed, daemon=True)
         self.thread_speed.start()
 
     def deinit(self):
@@ -134,7 +139,7 @@ class MainScreen(Screen):
         except Exception as e:
             hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
-            if self.log_enabled: 
+            if self.log_enabled:
                 self.close_and_save_file()
                 Clock.schedule_once(lambda dt: self.close_and_save_file(), 0)
             hardware.log.info("Pines cerrados correctamente")
@@ -147,7 +152,7 @@ class MainScreen(Screen):
         timeout_juego = int(config["timeout_juego"])
         hardware.log.info("Inicia Hilo")
         while self.running:
-            while not self.nextPage:   
+            while not self.nextPage:
                 # INICIO DEL REFLECTOR
                 self.sensor.wait_for_press()
                 t_on = time.perf_counter()
@@ -160,7 +165,7 @@ class MainScreen(Screen):
                 # VELOCIDAD REAL MEDIDA CON TON
                 mps = REFLECTOR / ton
                 kph = mps * 3.6
-                Clock.schedule_once(lambda _, v=kph, t=ton:self.show_speed(v, t))
+                Clock.schedule_once(lambda _, v=kph, t=ton: self.show_speed(v, t))
                 # Condiciones iniciales
                 theta = 0.0
                 omega = mps / longitud_pendulo
@@ -172,7 +177,7 @@ class MainScreen(Screen):
                         break
                     elapsed = time.perf_counter() - start_time
                     if elapsed >= timeout_juego:
-                        Clock.schedule_once(lambda _, t =elapsed :self.show_speed(0, t))
+                        Clock.schedule_once(lambda _, t=elapsed: self.show_speed(0, t))
                         Clock.schedule_once(lambda dt: self.close_and_save_file(), 0)
                         break
                     # RK4
@@ -180,28 +185,32 @@ class MainScreen(Screen):
                     # ------------------------
                     velocidad = abs(omega) * longitud_pendulo
                     kph = velocidad * 3.6
-                    Clock.schedule_once(lambda _, v=kph, t=elapsed :self.show_speed(v, t))
+                    Clock.schedule_once(
+                        lambda _, v=kph, t=elapsed: self.show_speed(v, t)
+                    )
                     time.sleep(hardware.TIEMPO_TEN_MSEC)
 
-# log events
+    # log events
     @mainthread
     def close_and_save_file(self):
-        if not self.log_enabled or not self.log_filename: 
+        if not self.log_enabled or not self.log_filename:
             return
         self.speed = 0
         try:
             os.chmod(self.log_path, stat.S_IREAD)
-            hardware.log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
+            hardware.log.info(
+                f"Archivo {self.log_filename} cerrado y puesto en solo lectura."
+            )
             self.active_file = ""
         except Exception as e:
             hardware.log.error("Error al cerrar archivo:", e)
         self.log_enabled = False
 
     @mainthread
-    def show_speed (self, _speed, _time):
+    def show_speed(self, _speed, _time):
         self.speed = _speed
         Clock.schedule_once(lambda _: self.save_events(_speed, _time))
-    
+
     def save_events(self, velocidad, dt):
         if not self.log_enabled:
             dt_name = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
@@ -220,20 +229,21 @@ class MainScreen(Screen):
         except Exception as e:
             hardware.log.error("Error escribiendo archivo:", e)
 
-# nuevas pantallas
 
 class ReusablePopup(Popup):
     title_text = StringProperty("")
     message = StringProperty("")
     on_confirm = ObjectProperty(None)
     confirm_mode = BooleanProperty(False)
-    
+
+
 def export_to_usb(source_file, usb_drive):
     try:
         destination = os.path.join(usb_drive, os.path.basename(source_file))
         shutil.copy2(source_file, destination)
     except Exception as e:
         hardware.log.warning(f"Error exportando archivo: {e}")
+
 
 def get_usb_drives():
     drives = []
@@ -249,6 +259,7 @@ def get_usb_drives():
 
     return drives
 
+
 class FileListScreen(Screen):
     cButt = BooleanProperty(False)
 
@@ -256,7 +267,14 @@ class FileListScreen(Screen):
         global setter_trigger
         self.cButt = setter_trigger
 
-        files = sorted([ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")], reverse=True)
+        files = sorted(
+            [
+                f
+                for f in os.listdir(LOG_DIR)
+                if f.startswith("Evento_") and f.endswith(".txt")
+            ],
+            reverse=True,
+        )
         self.ids.file_list.clear_widgets()
 
         # Crear botones por archivo
@@ -266,7 +284,7 @@ class FileListScreen(Screen):
                 text=fname,
                 size_hint_y=None,
                 height=40,
-                on_release=lambda b, f=fname: self.open_file(os.path.join(LOG_DIR, f))
+                on_release=lambda b, f=fname: self.open_file(os.path.join(LOG_DIR, f)),
             )
             self.ids.file_list.add_widget(btn)
 
@@ -274,7 +292,7 @@ class FileListScreen(Screen):
         viewer = self.manager.get_screen("file_viewer")
         viewer.load_file(filename)
         self.manager.current = "file_viewer"
-        
+
     def exportar_todos_usb(self):
         usb_list = get_usb_drives()
         hardware.log.warning(f"USB detectados: {usb_list}")
@@ -283,12 +301,14 @@ class FileListScreen(Screen):
             return
 
         usb = usb_list[0]
-        files = [ os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.endswith(".txt")]
+        files = [
+            os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.endswith(".txt")
+        ]
 
         for f in files:
             export_to_usb(f, usb)
-        self.show_popup("AVISO","EVENTOS EXPORTADOS" if files else "SIN EVENTOS")
-    
+        self.show_popup("AVISO", "EVENTOS EXPORTADOS" if files else "SIN EVENTOS")
+
     def borrar_archivos(self):
         try:
             files = [
@@ -304,13 +324,12 @@ class FileListScreen(Screen):
             self.show_popup(
                 "AVISO",
                 "¿DESEA ELIMINAR TODOS LOS EVENTOS?",
-                on_confirm=lambda: self._borrar_archivos_confirmado(files)
+                on_confirm=lambda: self._borrar_archivos_confirmado(files),
             )
 
         except Exception as e:
             hardware.log.error(f"ERROR LEYENDO EVENTOS:\n{e}")
             self.show_popup("ERROR", "ERROR LEYENDO EVENTOS")
-
 
     def _borrar_archivos_confirmado(self, files):
         eliminados = 0
@@ -337,13 +356,10 @@ class FileListScreen(Screen):
             self.show_popup(
                 "ERROR",
                 f"SE ELIMINARON {eliminados} EVENTOS\n\n"
-                f"NO SE PUDIERON ELIMINAR {len(errores)}"
+                f"NO SE PUDIERON ELIMINAR {len(errores)}",
             )
         else:
-            self.show_popup(
-                "AVISO",
-                f"SE ELIMINARON {eliminados} EVENTOS"
-            )
+            self.show_popup("AVISO", f"SE ELIMINARON {eliminados} EVENTOS")
 
     def show_popup(self, title, message, on_confirm=None):
         def _open(dt):
@@ -359,18 +375,18 @@ class FileListScreen(Screen):
             popup.open()
 
         Clock.schedule_once(_open, 0)
-    
+
     def fecha_y_hora(self):
         content = hora.DateTimePopup()
         self.popup_dis = Popup(
             title="CONFIGURAR FECHA Y HORA",
             content=content,
-            size_hint=(.90, .70), # se aumenta tamao de ventana de hora
-            auto_dismiss = False
+            size_hint=(0.90, 0.70),  # se aumenta tamao de ventana de hora
+            auto_dismiss=False,
         )
         content.popup = self.popup_dis
         self.popup_dis.open()
-    
+
     def set_data(self):
         global timeout_juego, longitud_pendulo
 
@@ -383,63 +399,42 @@ class FileListScreen(Screen):
         spinner_height = 45
 
         # Layout principal del popup
-        layout = BoxLayout(
-            orientation='vertical',
-            spacing=8,
-            padding=10
-        )
+        layout = BoxLayout(orientation="vertical", spacing=8, padding=10)
 
         grid = GridLayout(cols=2, spacing=4, size_hint_y=None)
-        grid.bind(minimum_height=grid.setter('height'))
+        grid.bind(minimum_height=grid.setter("height"))
 
         # Ancho detector
-        grid.add_widget(
-            Label(
-                text="LONGITUD [mts]",
-                font_size=30
-            )
-        )
+        grid.add_widget(Label(text="LONGITUD [mts]", font_size=30))
 
         self.reflex = Spinner(
             text=str(longitud_pendulo),
             values=[str(y) for y in range(1, 31)],
             size_hint=(1, None),
             height=spinner_height,
-            font_size=spinner_font
+            font_size=spinner_font,
         )
 
         grid.add_widget(self.reflex)
 
         # Distancia sensor
-        grid.add_widget(
-            Label(
-                text="TIMEOUT [seg]",
-                font_size=label_font
-            )
-        )
+        grid.add_widget(Label(text="TIMEOUT [seg]", font_size=label_font))
 
         self.timeout = Spinner(
             text=str(timeout_juego),
             values=[str(m) for m in range(10, 61)],
             size_hint=(1, None),
             height=spinner_height,
-            font_size=spinner_font
+            font_size=spinner_font,
         )
 
         grid.add_widget(self.timeout)
 
         layout.add_widget(grid)
 
-        btn_layout = BoxLayout(
-            size_hint=(1, None),
-            height=60,
-            spacing=8
-        )
+        btn_layout = BoxLayout(size_hint=(1, None), height=60, spacing=8)
 
-        save_btn = Button(
-            text="GUARDAR",
-            font_size=button_font
-        )
+        save_btn = Button(text="GUARDAR", font_size=button_font)
 
         save_btn.bind(on_release=self.choise_value)
 
@@ -448,16 +443,15 @@ class FileListScreen(Screen):
 
         # Popup
         self.popup_dis = Popup(
-            title='',
+            title="",
             title_size=0,
             content=layout,
             size_hint=(0.90, 0.50),
             auto_dismiss=True,
-            separator_height=0
+            separator_height=0,
         )
 
         self.popup_dis.open()
-
 
     def choise_value(self, instance):
         global timeout_juego
@@ -471,14 +465,14 @@ class FileListScreen(Screen):
         timeout_juego = int(self.timeout.text)
 
         hardware.log.warning(
-            f"Timeout: {timeout_juego} "
-            f"Distancia pendulo: {longitud_pendulo}"
+            f"Timeout: {timeout_juego} " f"Distancia pendulo: {longitud_pendulo}"
         )
         escribir_config("longitud_pendulo", longitud_pendulo)
         escribir_config("timeout_juego", timeout_juego)
 
         if self.popup_dis:
             self.popup_dis.dismiss()
+
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
@@ -492,18 +486,20 @@ class FileViewerScreen(Screen):
         except Exception as e:
             self.content = f"Error al abrir archivo:\n{e}"
 
+
 class mainApp(App):
-    def build(self):        
+    def build(self):
         return Builder.load_file("game.kv")
 
     def on_stop(self):
         main_screen = self.root.get_screen("main")
         main_screen.deinit()
 
+
 if __name__ == "__main__":
     try:
         mainApp().run()
-    
+
     except KeyboardInterrupt:
         hardware.log.error("keyboard exit")
     finally:

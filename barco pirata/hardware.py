@@ -2,14 +2,15 @@ import logging, time
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger(__name__)
 
 # Intentar cargar gpiozero
 try:
     from gpiozero import Button
+
     GPIO_AVAILABLE = True
     log.info("gpiozero cargado correctamente")
 except ImportError:
@@ -18,20 +19,26 @@ except ImportError:
 
 
 # Pines físicos
-PIN_INPUT_GPIO_4 = 4      # pin 7
+PIN_INPUT_GPIO_4 = 4  # pin 7
 PIN_INPUT_GPIO_27 = 27  # pin 13
-PIN_INPUT_GPIO_17 = 17     # pin 11
-PIN_INPUT_GPIO_22 = 22    # pin 15
+PIN_INPUT_GPIO_17 = 17  # pin 11
+PIN_INPUT_GPIO_22 = 22  # pin 15
 
 TIEMPO_ONE_SEC = 1
 TIEMPO_ONE_MSEC = 0.001
-TIEMPO_TEN_MSEC = 0.01 
+TIEMPO_TEN_MSEC = 0.01
 TIEMPO_REBOTE_SENSOR = None
 PULL_UP = True
 PULL_DOWN = False
 Pull = PULL_UP
 
-SENSOR_PINS = [PIN_INPUT_GPIO_17,PIN_INPUT_GPIO_27, PIN_INPUT_GPIO_4, PIN_INPUT_GPIO_22]
+SENSOR_PINS = [
+    PIN_INPUT_GPIO_17,
+    PIN_INPUT_GPIO_27,
+    PIN_INPUT_GPIO_4,
+    PIN_INPUT_GPIO_22,
+]
+
 
 class SensorVirtual:
     def __init__(self, pins):
@@ -77,6 +84,7 @@ class SensorVirtual:
         for btn in self.buttons:
             btn.close()
 
+
 # ---------------------------------------------------------
 # ---------------------------------------------------------
 def check_pin_free(pin):
@@ -106,15 +114,14 @@ if GPIO_AVAILABLE:
 else:
     # Modo simulado
     import random
+
     class Pin:
         def __init__(self):
             self.ton = 0.1
+
         def wait_for_press(self):
             time.sleep(2)
-            self.ton = random.uniform(
-                0.09,  # rápido
-                0.30   # lento
-            )
+            self.ton = random.uniform(0.09, 0.30)  # rápido  # lento
 
             return True
 
@@ -125,10 +132,11 @@ else:
         @property
         def is_pressed(self):
             return False
+
     # configuracion de pines entrada
     input_emergency = Pin()
     input_sensor = Pin()
-    input_gpio_4= Pin()
+    input_gpio_4 = Pin()
     input_gpio_22 = Pin()
 
     def close_all_pins():
