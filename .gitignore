@@ -16,6 +16,7 @@ logs/
 *.zip
 *.ini
 
+
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
@@ -28,6 +29,7 @@ out/
 # Archivos temporales de editores
 *.swp
 *.swo
+*.mp3
 
 # Archivos de configuración personales
 *.code-workspace

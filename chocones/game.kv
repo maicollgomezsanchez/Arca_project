@@ -188,6 +188,19 @@
                             size: self.size
                             pos: self.pos
                             radius: [radius_default]
+            BoxLayout:
+                Button:
+                    id: mp3_button
+                    text: "MP3"
+                    #group: "mode"
+                    on_press: root.open_pop_up_mp3()
+                    canvas.before:
+                        Color:
+                            rgba: utils.get_color_from_hex(c_modos_p if self.state == 'down' else c_modos)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [radius_default]
 
         # Segunda fila
         BoxLayout:
@@ -387,7 +400,7 @@
     text: ''
     canvas.before:
         Color:
-            rgba: utils.get_color_from_hex('#025e02' if self.state == 'down' else '#fbff00')
+            rgba: utils.get_color_from_hex('#ff0000' if self.state == 'down' else '#7bff00')
         RoundedRectangle:
             size: self.size
             pos: self.pos
@@ -479,3 +492,60 @@
                     size: self.size
                     pos: self.pos
                     radius: [30]
+
+
+<ButtonMp3@ToggleButton>:
+    allow_no_selection: False
+    text: ''
+    group: 'mp3'
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex('#631313' if self.state == 'down' else '#b2bda8')
+        RoundedRectangle:
+            size: self.size
+            pos: self.pos
+            radius: [5]
+
+<Popup_Mp3>:
+    title: "REPRODUCTOR MP3"
+    size_hint: 0.9, 0.9
+    auto_dismiss: False
+
+    BoxLayout:
+        orientation: "vertical"
+        spacing: 5
+        padding: 5
+        ScrollView:
+            GridLayout:
+                id: file_list
+                cols: 1
+                spacing: 2
+                size_hint_y: None
+                height: self.minimum_height
+
+        BoxLayout:
+            size_hint_y: 0.2
+            height: "60dp"
+            spacing: 10
+            padding: 10
+
+            ButtonMp3:
+                id: btn_play
+                text: "PLAY"
+                on_release: root.play_mp3()
+
+            ButtonMp3:
+                id: btn_stop
+                text: "STOP"
+                on_release: root.stop_mp3()
+            Button:
+                text: "VOLVER"
+                on_release:
+                    root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: utils.get_color_from_hex('#7a7979' if self.state == 'down' else '#f8faf7')
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [5]

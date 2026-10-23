@@ -1,19 +1,23 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import  StringProperty
+from kivy.properties import StringProperty
+from kivy.core.audio import SoundLoader
+from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from functools import partial
 import time, threading
 import hardware
-import json, os, sys
+import json, os, sys, platform
 
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# rutas comunes
 ARCHIVO_CONFIG = os.path.join(BASE_DIR, "config.json")
+BOCINA_MP3 = os.path.join(BASE_DIR, "bocina.mp3")
 
 def guardar_valor(clave, valor):
     datos = {}
@@ -24,6 +28,7 @@ def guardar_valor(clave, valor):
     with open(ARCHIVO_CONFIG, "w", encoding="utf-8") as f:
         json.dump(datos, f, indent=4)
 
+
 def leer_valor(clave, valor_defecto=None):
     if not os.path.exists(ARCHIVO_CONFIG):
         return valor_defecto
@@ -31,8 +36,119 @@ def leer_valor(clave, valor_defecto=None):
         datos = json.load(f)
     return datos.get(clave, valor_defecto)
 
+
 def window_setup():
     pass
+
+
+class Popup_Mp3(Popup):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.playlist = []
+        self.btn_list = []
+        self.posc = 0
+        self.soundPlayer = None
+        self.current_song = None
+
+    def on_dismiss(self):
+        if self.ids.btn_stop.state == "down":
+            self.ids.btn_stop.state = "normal"
+
+    def on_open(self):
+        self.playlist = []
+        self.btn_list = []
+        self.ids.file_list.clear_widgets()
+
+        if platform.system().lower() == "windows":
+            win_path = os.path.dirname(os.path.abspath(__file__))
+            for files in os.listdir(win_path):
+                if files.lower().endswith("bocina.mp3"):
+                    continue
+                if files.lower().endswith(".mp3"):
+                    self.playlist.append(os.path.join(win_path, files))
+        else:
+            media_dir = "/media/pi"
+            if os.path.exists(media_dir):
+                for usb in os.listdir(media_dir):
+                    usb_path = os.path.join(media_dir, usb)
+                    if not os.path.isdir(usb_path):
+                        continue
+                    for root, dirs, files in os.walk(usb_path):
+                        for file in files:
+                            if file.lower().endswith("bocina.mp3"):
+                                continue
+                            if file.lower().endswith(".mp3"):
+                                self.playlist.append(os.path.join(root, file))
+        self.playlist.sort()
+
+        for i, filename in enumerate(self.playlist):
+            btn = Button(
+                text=os.path.basename(filename),
+                size_hint_y=None,
+                height=50,
+                background_color=(1, 1, 1, 1),
+            )
+            btn.bind(on_release=lambda b, idx=i: self.selected_song(idx))
+            self.btn_list.append(btn)
+            self.ids.file_list.add_widget(btn)
+
+        if self.current_song in self.playlist:
+            self.posc = self.playlist.index(self.current_song)
+        elif self.posc >= len(self.playlist):
+            self.posc = 0
+        self.update_song_selected()
+
+    def update_song_selected(self):
+        for btn in self.btn_list:
+            btn.background_color = (1, 1, 1, 1)
+
+        if self.btn_list:
+            self.btn_list[self.posc].background_color = (1, 1, 0, 1)
+
+    def selected_song(self, indice):
+        self.posc = indice
+        self.update_song_selected()
+        if self.ids.btn_play.state == "down":
+            if self.soundPlayer:
+                self.soundPlayer.stop()
+            self.play_mp3()
+
+    def set_volume(self, valor):
+        if self.soundPlayer:
+            self.soundPlayer.volume = valor
+
+    def play_mp3(self):
+        if not self.playlist:
+            return
+        if self.soundPlayer:
+            self.soundPlayer.stop()
+        new_song = self.playlist[self.posc]
+        if not os.path.exists(new_song):
+            return
+        self.soundPlayer = SoundLoader.load(new_song)
+        self.current_song = new_song
+        if self.soundPlayer:
+            self.soundPlayer.play()
+            Clock.unschedule(self.check_ending)
+            Clock.schedule_interval(self.check_ending, 0.5)
+
+    def stop_mp3(self):
+        Clock.unschedule(self.check_ending)
+        if self.soundPlayer:
+            self.soundPlayer.stop()
+
+    def check_ending(self, dt):
+        if not self.soundPlayer:
+            return False
+        if self.soundPlayer.state != "play":
+            self.posc += 1
+            if self.posc >= len(self.playlist):
+                self.posc = 0
+            self.update_song_selected()
+            self.play_mp3()
+            return False
+        return True
+
 
 class Popup_luces(Popup):
     def __init__(self, **kwargs):
@@ -41,19 +157,20 @@ class Popup_luces(Popup):
     def on_open(self):
         for i in range(8):
             value = hardware.output_ilum[i].is_lit
-            self.ids[f"luz{i+1}"].state = ("down" if value else "normal")
+            self.ids[f"luz{i+1}"].state = "down" if value else "normal"
 
     def luces_pressed_state(self, item, state):
         led_ = hardware.output_ilum[item - 1]
         led_.on() if state == "down" else led_.off()
         hardware.log.info(f"iluminacion_{item}: {led_.is_lit}")
-    
+
     def luces_all_off(self):
         for i in range(8):
             led_ = hardware.output_ilum[i]
             led_.off()
-            self.ids[f"luz{i+1}"].state = ("normal")
+            self.ids[f"luz{i+1}"].state = "normal"
             hardware.log.info(f"iluminacion_{i + 1}: {led_.is_lit}")
+
 
 class Popup_banner(Popup):
     def __init__(self, **kwargs):
@@ -62,7 +179,8 @@ class Popup_banner(Popup):
     def setup_text(self, new_text):
         self.ids.label_popup.text = new_text
 
-class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica del juego
+
+class viewMain(Widget):
     # Variables de estado y botones
     main_mode_selected = None
     state_button_selected = None
@@ -84,10 +202,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     backup_label_time_travel = None
     button_timers_event = None
     popup_luces = None
+    popup_mp3 = None
 
-    def open_pop_up_luces(self):
-        self.popup_luces.open()
-    #guarda el ultimo valor programado de tiempo
+    # guarda el ultimo valor programado de tiempo
     def save_set_time(self):
         if self.label_time_wait != "--:--":
             self.backup_label_time_wait = self.label_time_wait
@@ -106,7 +223,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Convierte el tiempo en segundos a formato de etiqueta (mm:ss)
     def time_to_lbl(self, time):
         return f"{time % 3600 // 60:02d}:{time % 60:02d}"
-    
+
     # funciones de  pop up
     def show_popup(self, dt):
         if not self.popup_enabled:
@@ -130,10 +247,16 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if self.popup:
             self.popup.dismiss()
             self.popup = None
+    
+    def open_pop_up_luces(self):
+        self.popup_luces.open()
 
-###################################
-#############  HMI
-###################################
+    def open_pop_up_mp3(self):
+        self.popup_mp3.open()
+
+    ###################################
+    #############  HMI
+    ###################################
 
     def on_touch_move(self, touch):
         if touch.grab_current is self:
@@ -158,26 +281,36 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # Inicializa los botones de la interfaz
     def init_buttons(self):
         for name in (
-            "start_button", "pause_button", "stop_button",
-            "coin_button", "decoin_button",
-            "manual_button", "semi_button", "auto_button"
+            "start_button",
+            "pause_button",
+            "stop_button",
+            "coin_button",
+            "decoin_button",
+            "manual_button",
+            "semi_button",
+            "auto_button",
         ):
-            if name in self.ids: setattr(self, name, self.ids[name])
+            if name in self.ids:
+                setattr(self, name, self.ids[name])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.sound_bocina = None
+        self.popup_mp3 = Popup_Mp3()
         self.popup_luces = Popup_luces()
         self.label_time_travel = leer_valor("time_travel", "03:00")
         self.label_time_wait = leer_valor("time_wait", "00:15")
         self.init_buttons()
-        #hilo de bocina
+        # hilo de bocina
         self.thread_claxon = threading.Thread(target=self.claxon_loop, daemon=True)
         self.thread_coin = threading.Thread(target=self.coin_loop, daemon=True)
         if not self.thread_claxon.is_alive():
             self.thread_claxon.start()
         if not self.thread_coin.is_alive():
             self.thread_coin.start()
-        self.thread_emergency = threading.Thread(target=self.emergency_loop, daemon=True)
+        self.thread_emergency = threading.Thread(
+            target=self.emergency_loop, daemon=True
+        )
         if not self.thread_emergency.is_alive():
             self.thread_emergency.start()
 
@@ -187,16 +320,16 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 continue
             try:
                 time.sleep(hardware.TIEMPO_100_MSEC)
-                if hardware.input_emergency.is_pressed:    
+                if hardware.input_emergency.is_pressed:
                     if not self.popup_enabled:
                         Clock.schedule_once(self.show_popup, 0)
-        
+
                 elif self.popup_enabled:
                     Clock.schedule_once(self.close_popup, 0)
             except:
                 hardware.log.warning("error en hilo de emergencia")
 
-# capa hardware
+    # capa hardware
     def set_marcha(self, estado: bool):
         hm = hardware.output_marcha
         if hardware.output_traga_ficha.is_lit is True:
@@ -208,9 +341,31 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     def set_bocina(self, estado: bool):
         hm = hardware.output_bocina
         if hm.is_lit != estado:
-            hm.on() if estado else hm.off()
+            if estado:
+                self.buzzer_sound()
+                hm.on()
+            else: hm.off()
             hardware.log.info(f"Bocina {hm.is_lit}")
             
+
+    def buzzer_sound(self):
+        if self.popup_mp3.soundPlayer:
+            self.popup_mp3.set_volume(0.2)
+        self.sound_bocina = SoundLoader.load(BOCINA_MP3)
+        if self.sound_bocina:
+            self.sound_bocina.play()
+            Clock.unschedule(self.check_buzzer)
+            Clock.schedule_interval(self.check_buzzer, 0.2)
+
+    def check_buzzer(self, dt):
+        if not self.sound_bocina:
+            return False
+
+        if self.sound_bocina.state != "play":
+            self.popup_mp3.set_volume(1.0)
+            return False
+        return True
+
     def set_come_ficha(self, estado: bool):
         hm = hardware.output_traga_ficha
         if self.game_running and self.state_button_selected != "PAUSE":
@@ -220,7 +375,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         if hm.is_lit != estado:
             hm.on() if estado else hm.off()
             hardware.log.info(f"come ficha {hm.is_lit}")
-        
+
     def claxon_loop(self):
         hardware.log.info("iniciando hilo de bocina")
         while self.claxon_is_running:
@@ -256,7 +411,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                         hardware.log.info(f"Comiendo Ficha x {pulse}")
                         self.set_come_ficha(False)
                         time.sleep(hardware.TIEMPO_PULSOS_FICHA)
-                
+
             except Exception as e:
                 hardware.log.error(f"Error en coin_thread: {e}")
                 self.set_come_ficha(False)
@@ -273,7 +428,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
     # BOTONES DE SUBIR Y BAJAR CONTADORES
     def set_times(self, id_button, dt):
         if self.main_mode_selected == "MANUAL":
-            return
+            return False
 
         timers = {
             "travel_+": ("label_time_travel", 1),
@@ -285,22 +440,28 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             label, increment = timers[id_button]
             current_time = getattr(self, label, "00:00")
             if current_time == "--:--":
-                return None
+                return False
             current_time = self.lbl_to_time(current_time)
 
         new_time = max(0, current_time + increment)
 
         if label == "label_time_wait":
             if self.main_mode_selected == "AUTO":
-                current_time = max(hardware.TIEMPO_MINIMO_ESPERA, min(hardware.TIEMPO_MAXIMO_ESPERA, new_time))
+                current_time = max(
+                    hardware.TIEMPO_MINIMO_ESPERA,
+                    min(hardware.TIEMPO_MAXIMO_ESPERA, new_time),
+                )
         else:
             current_time = new_time
 
         setattr(self, label, self.time_to_lbl(current_time))
+        return True
 
     def on_button_press(self, button):
         if self.state_button_selected == "STOP":
-            self.button_timers_event = Clock.schedule_interval(partial(self.set_times, button), hardware.TIEMPO_100_MSEC)
+            self.button_timers_event = Clock.schedule_interval(
+                partial(self.set_times, button), hardware.TIEMPO_100_MSEC
+            )
 
     def on_button_release(self):
         if self.button_timers_event:
@@ -314,7 +475,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         self.ids.btn_travel_m.disabled = auto_disabled
 
     # selecciona el modo del juego
-    def mode_press(self, mode_select): 
+    def mode_press(self, mode_select):
         if all(
             btn.state == "normal"
             for btn in [
@@ -342,10 +503,9 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         elif mode_select == "AUTO":
             self.label_time_wait = self.backup_label_time_wait
             self.label_time_travel = self.backup_label_time_travel
-        
+
         self.main_mode_selected = mode_select
         self.state_button_selected = "STOP"
-
 
     # Cambia el estado del sistema
     def state_press(self, state_select):
@@ -358,10 +518,12 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         if state_select == "START":
             for btn in (
-            self.manual_button,
-            self.semi_button,
-            self.auto_button,
-            self.start_button,): btn.disabled = True
+                self.manual_button,
+                self.semi_button,
+                self.auto_button,
+                self.start_button,
+            ):
+                btn.disabled = True
             self.pause_button.disabled = False
             self.start_button.state = "normal"
             # deshabbilitado comer ficha si no es auto
@@ -369,7 +531,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 self.coin_button.disabled = True
                 self.decoin_button.disabled = True
                 self.decoin_button.state = "down"
-            
+
             if self.state_button_selected == "STOP":
                 self.save_set_time()
                 self.init_counter()
@@ -385,22 +547,28 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                         self.coin_button.disabled = True
                 if self.clock_event:
                     self.clock_event.cancel()
-                self.clock_event = Clock.schedule_interval(callback, hardware.TIEMPO_ONE_SEC)
+                self.clock_event = Clock.schedule_interval(
+                    callback, hardware.TIEMPO_ONE_SEC
+                )
             return
 
         if state_select == "PAUSE":
-            #apagando marcha si esta encendido
+            # apagando marcha si esta encendido
             self.start_button.disabled = False
             self.pause_button.disabled = True
-            #self.pause_button.state = "normal"
-            # para evitar error de visual de pause 
+            # self.pause_button.state = "normal"
+            # para evitar error de visual de pause
             if not self.pause_running:
                 if not self.game_running:
                     return
             self.state_button_selected = "PAUSE"
             hardware.log.info(f"pausado en modo: {self.main_mode_selected}")
             self.set_marcha(False)
-            if self.coin_button.disabled and self.main_mode_selected == "AUTO" and self.decoin_button.state != "down":
+            if (
+                self.coin_button.disabled
+                and self.main_mode_selected == "AUTO"
+                and self.decoin_button.state != "down"
+            ):
                 self.coin_button.disabled = False
             # limpia contador para abrir una nuevo en sig evento
             if self.clock_event:
@@ -410,7 +578,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
 
         raise ValueError("error states")
 
-# Inicializa los contadores de tiempo
+    # Inicializa los contadores de tiempo
     def init_counter(self):
         if self.state_button_selected != "STOP":
             return
@@ -427,20 +595,26 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             hardware.log.info("Conteo de espera en modo AUTO")
             if self.clock_event:
                 self.clock_event.cancel()
-            self.clock_event = Clock.schedule_interval(self.start_waiting_time, hardware.TIEMPO_ONE_SEC)
+            self.clock_event = Clock.schedule_interval(
+                self.start_waiting_time, hardware.TIEMPO_ONE_SEC
+            )
             return
 
         if mode == "MANUAL":
             self.travel_time = 0
         # Común a MANUAL y SEMI
         self.press_claxon = True
-        Clock.schedule_once(self.start_travel_after_buzzer, hardware.TIEMPO_DURACION_SIRENA)
+        Clock.schedule_once(
+            self.start_travel_after_buzzer, hardware.TIEMPO_DURACION_SIRENA
+        )
 
     def start_travel_after_buzzer(self, dt):
         hardware.log.info(f"Comienza el juego en {self.main_mode_selected}")
         if self.clock_event:
             self.clock_event.cancel()
-        self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)
+        self.clock_event = Clock.schedule_interval(
+            self.start_travel_time, hardware.TIEMPO_ONE_SEC
+        )
 
     # Actualiza el tiempo de espera (decrece)
     def start_waiting_time(self, dt):
@@ -457,15 +631,17 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                 if self.clock_event:
                     self.clock_event.cancel()
                 self.label_time_wait = self.backup_label_time_wait
-                self.clock_event = Clock.schedule_interval(self.start_travel_time, hardware.TIEMPO_ONE_SEC)        
-        
+                self.clock_event = Clock.schedule_interval(
+                    self.start_travel_time, hardware.TIEMPO_ONE_SEC
+                )
+
     # Actualiza el tiempo de viaje
     def start_travel_time(self, dt):
         if self.state_button_selected != "START":
             return
         elif self.pause_button.state == "down":
             self.state_press("PAUSE")
-        #enciende marcha
+        # enciende marcha
         self.game_running = True
         self.coin_button.disabled = True
         self.set_marcha(True)
@@ -500,7 +676,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
                     self.eating_coin()
                     self.label_time_travel = self.backup_label_time_travel
                     self.state_button_selected = "STOP"
-                    self.init_counter()      
+                    self.init_counter()
 
     # Limpia todos los estados y reinicia los temporizadores
     def clean_all(self):
@@ -515,7 +691,8 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.auto_button,
             self.start_button,
             self.pause_button,
-        ]: button.disabled = False
+        ]:
+            button.disabled = False
         self.disabled_timer_buttons(False)
         # control de botones traga ficha
         if self.main_mode_selected == "AUTO":
@@ -525,21 +702,21 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
             self.decoin_button.state = "normal"
             self.coin_button.disabled = False
             self.decoin_button.disabled = False
-            
+
         if self.game_running:
             self.game_running = False
             self.eating_coin()
             self.press_claxon = True
         # Restaurar etiquetas y detener el temporizador
         self.label_time_travel = self.backup_label_time_travel
-        self.label_time_wait =self.backup_label_time_wait
-    
-        #limpia contadores si los hubiera
+        self.label_time_wait = self.backup_label_time_wait
+
+        # limpia contadores si los hubiera
         if self.clock_event:
             self.clock_event.cancel()
             self.clock_event = None
 
-        #restablece modo de juego
+        # restablece modo de juego
         self.modes = {
             "AUTO": self.auto_button,
             "MANUAL": self.manual_button,
@@ -554,8 +731,7 @@ class viewMain(Widget):  # Clase principal que maneja la interfaz y la lógica d
         }
 
         self.label_time_wait, self.label_time_travel = mode_config.get(
-            self.main_mode_selected,
-            ("--:--", "--:--")
+            self.main_mode_selected, ("--:--", "--:--")
         )
         self.state_button_selected = "STOP"
 
