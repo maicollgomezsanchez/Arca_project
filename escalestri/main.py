@@ -8,6 +8,7 @@ from functools import partial
 import time, threading
 import hardware
 
+
 def window_setup():
     Window.size = (1024, 600)
 
@@ -99,7 +100,10 @@ class viewMain(Widget):
                 self.laps = max(0, self.laps + delta)
                 hardware.log.debug(f"Modo {self.main_mode}, vueltas: {self.laps}")
             # cerrar si llega a limites
-            limit_manual = self.main_mode == hardware.MANUAL and self.laps == hardware.MAXIMAS_VUELTAS
+            limit_manual = (
+                self.main_mode == hardware.MANUAL
+                and self.laps == hardware.MAXIMAS_VUELTAS
+            )
             limit_auto = self.main_mode == hardware.AUTO and self.laps == 0
 
             if limit_auto or limit_manual:
@@ -168,7 +172,12 @@ class viewMain(Widget):
     def init_hmi_buts(self):
         for ids in self.buttons_name:
             setattr(self, ids, self.ids[ids])
-        self.buttons = [self.manual_button, self.auto_button, self.start_button, self.pause_button]
+        self.buttons = [
+            self.manual_button,
+            self.auto_button,
+            self.start_button,
+            self.pause_button,
+        ]
         self.modes = {
             hardware.AUTO: self.auto_button,
             hardware.MANUAL: self.manual_button,
@@ -210,11 +219,17 @@ class viewMain(Widget):
                     return super().on_touch_down(touch)
 
                 if self.current_state in (hardware.STOP, None):
-                    if widget_id == "manual_button" and self.main_mode is not hardware.MANUAL:
+                    if (
+                        widget_id == "manual_button"
+                        and self.main_mode is not hardware.MANUAL
+                    ):
                         self.mode_press(hardware.MANUAL, btn)
                         return super().on_touch_down(touch)
 
-                    if widget_id == "auto_button" and self.main_mode is not hardware.AUTO:
+                    if (
+                        widget_id == "auto_button"
+                        and self.main_mode is not hardware.AUTO
+                    ):
                         self.mode_press(hardware.AUTO, btn)
                         return super().on_touch_down(touch)
 
@@ -276,7 +291,7 @@ class viewMain(Widget):
             return
 
     def _pause_event(self):
-        self.mi_label.color = ('#ff8000')
+        self.mi_label.color = "#ff8000"
         self.mi_txt.color = self.mi_label.color
         # animicacion de botones HMI pausa
         self.start_button.disabled = False
@@ -292,14 +307,16 @@ class viewMain(Widget):
 
     def _start_event(self):
         # animacion de botones hmi
-        self.mi_label.color = ("#00aa00")
+        self.mi_label.color = "#00aa00"
         self.mi_txt.color = self.mi_label.color
         self.manual_button.disabled = True
         self.auto_button.disabled = True
         self.start_button.disabled = True
         self.pause_button.disabled = False
         hardware.log.info(
-            "Iniciar evento" if self.current_state == hardware.STOP else "Re-iniciar evento"
+            "Iniciar evento"
+            if self.current_state == hardware.STOP
+            else "Re-iniciar evento"
         )
         if self.current_state == hardware.STOP:
             # activa sirena de inicio
@@ -308,7 +325,7 @@ class viewMain(Widget):
             self.backup_laps = self.laps
             # actualiza la vueltas en la HMI
             self.laps = self.backup_laps if self.main_mode == hardware.AUTO else 0
-        
+
         while self.sound_claxon:
             time.sleep(hardware.TIEMPO_100_MSEC)
 
@@ -324,7 +341,7 @@ class viewMain(Widget):
         if self.main_mode is None:
             return
         # off conteo
-        self.mi_label.color = (0,0,0,1)
+        self.mi_label.color = (0, 0, 0, 1)
         self.mi_txt.color = self.mi_label.color
         hardware.log.info("-------------")
         if self.init_counter:
@@ -346,7 +363,7 @@ class viewMain(Widget):
             button.disabled = False
         for mode, button in self.modes.items():
             button.state = "down" if self.main_mode == mode else "normal"
-        #hardware.log.info(f"limpiando en modo {self.main_mode}")
+        # hardware.log.info(f"limpiando en modo {self.main_mode}")
 
 
 class gameApp(App):
@@ -362,9 +379,8 @@ class gameApp(App):
 if __name__ == "__main__":
     try:
         gameApp().run()
-    
+
     except KeyboardInterrupt:
         hardware.log.error("keyboard exit")
     finally:
         hardware.close_all_pins()
-

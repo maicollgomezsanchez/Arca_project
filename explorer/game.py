@@ -1,7 +1,12 @@
 from kivy.app import App
-from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ObjectProperty
+from kivy.properties import (
+    NumericProperty,
+    StringProperty,
+    BooleanProperty,
+    ObjectProperty,
+)
 from kivy.lang import Builder
-from kivy.clock import Clock,  mainthread
+from kivy.clock import Clock, mainthread
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
@@ -35,21 +40,23 @@ else:
         print(f"ERROR creando {LOG_DIR}: {e}")
         LOG_DIR = "."
 
-#constantes
-VELOCIDAD_MAXIMA = 80 # kilometros por hora
-TIMEOUT = 8 # segundos sin pulsos para cerrar archivo
-TIMEOUT_DESACELERA = 1.5 # timeout animacion de desacelerar
+# constantes
+VELOCIDAD_MAXIMA = 80  # kilometros por hora
+TIMEOUT = 8  # segundos sin pulsos para cerrar archivo
+TIMEOUT_DESACELERA = 1.5  # timeout animacion de desacelerar
 FRENADO = 0.01
-#globales
-distancia_entre_pulsos = 3.5 # en metros
+# globales
+distancia_entre_pulsos = 3.5  # en metros
 setter_trigger = False
 
+
 def window_setup():
-    Window.size = (1024, 600)    
+    Window.size = (1024, 600)
     Window.borderless = False
     Window.fullscreen = True
     Window.show_cursor = False
     Window.release_all_keyboards()
+
 
 class MainScreen(Screen):
     speed = NumericProperty(0)
@@ -57,18 +64,18 @@ class MainScreen(Screen):
     nextPage = BooleanProperty(False)
     RPM_sensor = BooleanProperty(False)
     needle = BooleanProperty(False)
-    
+
     def on_pre_enter(self):
         global setter_trigger
         self.nextPage = False
         self.needle = setter_trigger
-    
+
     def set_vel(self):
         global setter_trigger
         setter_trigger = not setter_trigger
-        self.needle = setter_trigger 
-        
-  #variables globales
+        self.needle = setter_trigger
+
+    # variables globales
     def init_vars(self):
         self.decay_event = None
         self.no_pulse_start = None
@@ -83,14 +90,12 @@ class MainScreen(Screen):
         self.running = True
         self.init_vars()
         self.thread_speed = threading.Thread(
-            target=self.read_speed,
-            args=(self.read_RPM,),
-            daemon=True
+            target=self.read_speed, args=(self.read_RPM,), daemon=True
         )
-        self.thread_speed.start()        
+        self.thread_speed.start()
         hardware.input_sensor.when_pressed = self.on_sensor
-        hardware.input_sensor.when_released  = self.off_sensor
-    
+        hardware.input_sensor.when_released = self.off_sensor
+
     def deinit(self):
         self.running = False
         try:
@@ -99,7 +104,7 @@ class MainScreen(Screen):
         except Exception as e:
             hardware.log.error(f"Error al detener los hilos: {e}")
         finally:
-            if self.log_enabled: 
+            if self.log_enabled:
                 self.close_and_save_file()
                 Clock.schedule_once(lambda dt: self.close_and_save_file(), 0)
             hardware.log.info("Pines cerrados correctamente")
@@ -107,27 +112,31 @@ class MainScreen(Screen):
 
     def read_RPM(self):
         return self.RPM_sensor
-        
+
     def on_sensor(self):
         if self.nextPage:
             return
         self.RPM_sensor = True
-    
+
     def off_sensor(self):
         if self.nextPage:
             return
         self.RPM_sensor = False
-#simulacion de pulsos
+
+    # simulacion de pulsos
     def simular_pulso(self, dt):
         self.simular_pulsos(dt)
+
     def simular_pulsos(self, dt):
         self.RPM_sensor = True
         Clock.schedule_once(self._reset_pulso, 0.01)
+
     def _reset_pulso(self, dt):
         self.RPM_sensor = False
-#######################
-# hilo principal
-#######################
+
+    #######################
+    # hilo principal
+    #######################
     def read_speed(self, get_RPM):
         global distancia_entre_pulsos
         self._last = None
@@ -182,7 +191,7 @@ class MainScreen(Screen):
                     return
                 time.sleep(0.001)
 
-#DESACELERA
+    # DESACELERA
     def start_decay(self):
         if self.decay_event:
             return
@@ -193,31 +202,34 @@ class MainScreen(Screen):
         if self.no_pulse_start is None:
             return False
         elapsed = time.time() - self.no_pulse_start
-        ratio = max(0, 1 - (elapsed/3))
+        ratio = max(0, 1 - (elapsed / 3))
         self.speed = self.initial_speed * ratio
         if ratio <= 0.001:
             self.decay_event = None
             self.no_pulse_start = None
             return False
         return True
-# log events
+
+    # log events
     @mainthread
     def close_and_save_file(self):
-        self._last = None       
-        if not self.log_enabled or not self.log_filename: 
+        self._last = None
+        if not self.log_enabled or not self.log_filename:
             return
         try:
             os.chmod(self.log_path, stat.S_IREAD)
-            hardware.log.info(f"Archivo {self.log_filename} cerrado y puesto en solo lectura.")
+            hardware.log.info(
+                f"Archivo {self.log_filename} cerrado y puesto en solo lectura."
+            )
             self.active_file = ""
         except Exception as e:
             hardware.log.error("Error al cerrar archivo:", e)
         self.log_enabled = False
 
     @mainthread
-    def export_values (self, _speed):
+    def export_values(self, _speed):
         self.speed = _speed
-    
+
     def save_events(self, velocidad, dt):
         if not self.log_enabled:
             dt_name = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
@@ -234,20 +246,24 @@ class MainScreen(Screen):
         except Exception as e:
             hardware.log.error("Error escribiendo archivo:", e)
 
+
 # nuevas pantallas
+
 
 class ReusablePopup(Popup):
     title_text = StringProperty("")
     message = StringProperty("")
     on_confirm = ObjectProperty(None)
     confirm_mode = BooleanProperty(False)
-    
+
+
 def export_to_usb(source_file, usb_drive):
     try:
         destination = os.path.join(usb_drive, os.path.basename(source_file))
         shutil.copy2(source_file, destination)
     except Exception as e:
         hardware.log.warning(f"Error exportando archivo: {e}")
+
 
 def get_usb_drives():
     drives = []
@@ -260,13 +276,21 @@ def get_usb_drives():
             drives.append(full_path)
     return drives
 
+
 class FileListScreen(Screen):
     cButt = BooleanProperty(False)
 
     def on_pre_enter(self):
         global setter_trigger
         self.cButt = setter_trigger
-        files = sorted([ f for f in os.listdir(LOG_DIR) if f.startswith("Evento_") and f.endswith(".txt")],reverse=True)
+        files = sorted(
+            [
+                f
+                for f in os.listdir(LOG_DIR)
+                if f.startswith("Evento_") and f.endswith(".txt")
+            ],
+            reverse=True,
+        )
         self.ids.file_list.clear_widgets()
         # Crear botones por archivo
         for fname in files:
@@ -275,7 +299,7 @@ class FileListScreen(Screen):
                 text=fname,
                 size_hint_y=None,
                 height=40,
-                on_release=lambda b, f=fname: self.open_file(os.path.join(LOG_DIR, f))
+                on_release=lambda b, f=fname: self.open_file(os.path.join(LOG_DIR, f)),
             )
             self.ids.file_list.add_widget(btn)
 
@@ -283,7 +307,7 @@ class FileListScreen(Screen):
         viewer = self.manager.get_screen("file_viewer")
         viewer.load_file(filename)
         self.manager.current = "file_viewer"
-        
+
     def exportar_todos_usb(self):
         usb_list = get_usb_drives()
         hardware.log.warning(f"USB detectados: {usb_list}")
@@ -291,11 +315,13 @@ class FileListScreen(Screen):
             self.show_popup("AVISO", "NO HAY USB CONECTADO")
             return
         usb = usb_list[0]
-        files = [ os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.endswith(".txt")]
+        files = [
+            os.path.join(LOG_DIR, f) for f in os.listdir(LOG_DIR) if f.endswith(".txt")
+        ]
         for f in files:
             export_to_usb(f, usb)
-        self.show_popup("AVISO","EVENTOS EXPORTADOS" if files else "SIN EVENTOS")
-    
+        self.show_popup("AVISO", "EVENTOS EXPORTADOS" if files else "SIN EVENTOS")
+
     def borrar_archivos(self):
         try:
             files = [
@@ -309,12 +335,11 @@ class FileListScreen(Screen):
             self.show_popup(
                 "AVISO",
                 "¿DESEA ELIMINAR TODOS LOS EVENTOS?",
-                on_confirm=lambda: self._borrar_archivos_confirmado(files)
+                on_confirm=lambda: self._borrar_archivos_confirmado(files),
             )
         except Exception as e:
             hardware.log.error(f"ERROR LEYENDO EVENTOS:\n{e}")
             self.show_popup("ERROR", "ERROR LEYENDO EVENTOS")
-
 
     def _borrar_archivos_confirmado(self, files):
         eliminados = 0
@@ -341,13 +366,10 @@ class FileListScreen(Screen):
             self.show_popup(
                 "ERROR",
                 f"SE ELIMINARON {eliminados} EVENTOS\n\n"
-                f"NO SE PUDIERON ELIMINAR {len(errores)}"
+                f"NO SE PUDIERON ELIMINAR {len(errores)}",
             )
         else:
-            self.show_popup(
-                "AVISO",
-                f"SE ELIMINARON {eliminados} EVENTOS"
-            )
+            self.show_popup("AVISO", f"SE ELIMINARON {eliminados} EVENTOS")
 
     def show_popup(self, title, message, on_confirm=None):
         def _open(dt):
@@ -359,56 +381,52 @@ class FileListScreen(Screen):
             if on_confirm:
                 popup.on_confirm = on_confirm
             popup.open()
+
         Clock.schedule_once(_open, 0)
-    
+
     def fecha_y_hora(self):
         content = hora.DateTimePopup()
         self.popup = Popup(
             title="CONFIGURAR FECHA Y HORA",
             content=content,
-            size_hint=(.90, .70), # se aumenta tamao de ventana de hora
-            auto_dismiss = False
+            size_hint=(0.90, 0.70),  # se aumenta tamao de ventana de hora
+            auto_dismiss=False,
         )
         content.popup = self.popup
         self.popup.open()
 
     def set_data(self):
-        if not self.cButt: 
+        if not self.cButt:
             return
-        layout = BoxLayout(
-            orientation='vertical',
-            spacing=30,
-            padding=30
-        )
-        popup = Popup(           
-            title='',
+        layout = BoxLayout(orientation="vertical", spacing=30, padding=30)
+        popup = Popup(
+            title="",
             title_size=0,
             content=layout,
             size_hint=(0.5, 0.5),
             auto_dismiss=True,
-            separator_height=0
+            separator_height=0,
         )
         for valor in (9, 7, 3.5):
             btn = Button(
                 text=str(valor),
                 size_hint=(0.6, None),
                 height=60,
-                pos_hint={"center_x": 0.5}
+                pos_hint={"center_x": 0.5},
             )
-            btn.bind(
-                on_release=lambda instance, v=valor: self.choise_value(v, popup)
-            )
+            btn.bind(on_release=lambda instance, v=valor: self.choise_value(v, popup))
             layout.add_widget(btn)
         popup.open()
 
     def choise_value(self, valor, popup):
         global distancia_entre_pulsos, setter_trigger
         setter_trigger = False
-        #actualiza color de boton
+        # actualiza color de boton
         self.cButt = False
         distancia_entre_pulsos = valor
-        hardware.log.warning(f"nueva distancia {distancia_entre_pulsos}" )
+        hardware.log.warning(f"nueva distancia {distancia_entre_pulsos}")
         popup.dismiss()
+
 
 class FileViewerScreen(Screen):
     content = StringProperty("")
@@ -422,6 +440,7 @@ class FileViewerScreen(Screen):
         except Exception as e:
             self.content = f"Error al abrir archivo:\n{e}"
 
+
 class mainApp(App):
     def build(self):
         window_setup()
@@ -430,6 +449,7 @@ class mainApp(App):
     def on_stop(self):
         main_screen = self.root.get_screen("main")
         main_screen.deinit()
+
 
 if __name__ == "__main__":
     try:
